@@ -12,7 +12,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { useAuth } from "@/lib/auth"
 import { toast } from "sonner"
 
 export function LoginForm({
@@ -22,21 +21,18 @@ export function LoginForm({
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     
-    try {
-      await login(username, password)
-      toast.success("Login successful!")
-    } catch (error: any) {
-      toast.error(error.message || "Login failed. Please check your credentials.")
-    } finally {
+    // Dummy login for preview - will be replaced with real API call later
+    setTimeout(() => {
+      toast.success("Login successful! (Preview mode)")
+      router.push("/dashboard")
       setLoading(false)
-    }
+    }, 500)
   }
 
   return (

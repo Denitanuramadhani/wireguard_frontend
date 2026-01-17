@@ -33,8 +33,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.setToken(token);
       // Try to get user info from myaccess endpoint
       api.getMyAccess()
-        .then((data) => {
-          if (data.user) {
+        .then((data: any) => {
+          if (data?.user) {
             setUser(data.user);
           }
         })
