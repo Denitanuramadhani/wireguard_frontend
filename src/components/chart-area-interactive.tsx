@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-
 import { useIsMobile } from "@/hooks/use-mobile"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Card,
   CardAction,
@@ -32,7 +32,7 @@ import {
 
 export const description = "An interactive area chart"
 
-const chartData = [
+const defaultChartData = [
   { date: "2024-04-01", desktop: 222, mobile: 150 },
   { date: "2024-04-02", desktop: 97, mobile: 180 },
   { date: "2024-04-03", desktop: 167, mobile: 120 },
@@ -140,39 +140,65 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function ChartAreaInteractive() {
+interface ChartAreaInteractiveProps {
+  data?: Array<{ date: string; traffic?: number }>
+  loading?: boolean
+}
+
+export function ChartAreaInteractive({ data, loading }: ChartAreaInteractiveProps = {}) {
   const isMobile = useIsMobile()
-  const [timeRange, setTimeRange] = React.useState("90d")
+  const [timeRange, setTimeRange] = React.useState("24h")
+  const [hours, setHours] = React.useState(24)
 
   React.useEffect(() => {
     if (isMobile) {
-      setTimeRange("7d")
+      setTimeRange("24h")
+      setHours(24)
     }
   }, [isMobile])
 
-  const filteredData = chartData.filter((item) => {
-    const date = new Date(item.date)
-    const referenceDate = new Date("2024-06-30")
-    let daysToSubtract = 90
-    if (timeRange === "30d") {
-      daysToSubtract = 30
-    } else if (timeRange === "7d") {
-      daysToSubtract = 7
-    }
-    const startDate = new Date(referenceDate)
-    startDate.setDate(startDate.getDate() - daysToSubtract)
-    return date >= startDate
-  })
+  React.useEffect(() => {
+    if (timeRange === "7d") setHours(168)
+    else if (timeRange === "24h") setHours(24)
+    else if (timeRange === "1h") setHours(1)
+  }, [timeRange])
+
+  const chartDataToUse = data && data.length > 0 
+    ? data.map(item => ({
+        date: item.date,
+        traffic: item.traffic || 0,
+      }))
+    : []
+
+  const filteredData = chartDataToUse.length > 0 
+    ? chartDataToUse.filter((item) => {
+        const date = new Date(item.date)
+        const now = new Date()
+        const hoursAgo = now.getTime() - (hours * 60 * 60 * 1000)
+        return date.getTime() >= hoursAgo
+      })
+    : []
+
+  if (loading) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-32 mt-2" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[250px] w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Total Visitors</CardTitle>
+        <CardTitle>Traffic Analytics</CardTitle>
         <CardDescription>
-          <span className="hidden @[540px]/card:block">
-            Total for the last 3 months
-          </span>
-          <span className="@[540px]/card:hidden">Last 3 months</span>
+          Network traffic over time
         </CardDescription>
         <CardAction>
           <ToggleGroup
@@ -182,109 +208,108 @@ export function ChartAreaInteractive() {
             variant="outline"
             className="hidden *:data-[slot=toggle-group-item]:!px-4 @[767px]/card:flex"
           >
-            <ToggleGroupItem value="90d">Last 3 months</ToggleGroupItem>
-            <ToggleGroupItem value="30d">Last 30 days</ToggleGroupItem>
             <ToggleGroupItem value="7d">Last 7 days</ToggleGroupItem>
+            <ToggleGroupItem value="24h">Last 24 hours</ToggleGroupItem>
+            <ToggleGroupItem value="1h">Last hour</ToggleGroupItem>
           </ToggleGroup>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger
               className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
               size="sm"
-              aria-label="Select a value"
+              aria-label="Select time range"
             >
-              <SelectValue placeholder="Last 3 months" />
+              <SelectValue placeholder="Last 24 hours" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">
-                Last 3 months
-              </SelectItem>
-              <SelectItem value="30d" className="rounded-lg">
-                Last 30 days
-              </SelectItem>
               <SelectItem value="7d" className="rounded-lg">
                 Last 7 days
+              </SelectItem>
+              <SelectItem value="24h" className="rounded-lg">
+                Last 24 hours
+              </SelectItem>
+              <SelectItem value="1h" className="rounded-lg">
+                Last hour
               </SelectItem>
             </SelectContent>
           </Select>
         </CardAction>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-[250px] w-full"
-        >
-          <AreaChart data={filteredData}>
-            <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={1.0}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-desktop)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-mobile)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value) => {
-                const date = new Date(value)
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              }}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }}
-                  indicator="dot"
-                />
-              }
-            />
-            <Area
-              dataKey="mobile"
-              type="natural"
-              fill="url(#fillMobile)"
-              stroke="var(--color-mobile)"
-              stackId="a"
-            />
-            <Area
-              dataKey="desktop"
-              type="natural"
-              fill="url(#fillDesktop)"
-              stroke="var(--color-desktop)"
-              stackId="a"
-            />
-          </AreaChart>
-        </ChartContainer>
+        {filteredData.length > 0 ? (
+          <ChartContainer
+            config={{
+              traffic: {
+                label: "Traffic",
+                color: "var(--primary)",
+              },
+            }}
+            className="aspect-auto h-[250px] w-full"
+          >
+            <AreaChart data={filteredData}>
+              <defs>
+                <linearGradient id="fillTraffic" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor="var(--primary)"
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--primary)"
+                    stopOpacity={0.1}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={32}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                }}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value) => {
+                      return new Date(value).toLocaleString("en-US")
+                    }}
+                    indicator="dot"
+                    formatter={(value: any) => {
+                      const bytes = Number(value)
+                      if (bytes >= 1024 * 1024 * 1024) {
+                        return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+                      } else if (bytes >= 1024 * 1024) {
+                        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+                      } else if (bytes >= 1024) {
+                        return `${(bytes / 1024).toFixed(2)} KB`
+                      }
+                      return `${bytes} B`
+                    }}
+                  />
+                }
+              />
+              <Area
+                dataKey="traffic"
+                type="natural"
+                fill="url(#fillTraffic)"
+                stroke="var(--primary)"
+              />
+            </AreaChart>
+          </ChartContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+            No traffic data available
+          </div>
+        )}
       </CardContent>
     </Card>
   )

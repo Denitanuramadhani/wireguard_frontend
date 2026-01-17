@@ -1,16 +1,23 @@
+"use client"
+
 import { AppSidebar } from "@/components/app-sidebar"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
+import { dummyStats, dummyTrafficData } from "@/lib/dummy-data"
 
-import data from "./data.json"
+export default function DashboardPage() {
+  // Using dummy data for preview
+  const stats = dummyStats
+  const chartData = dummyTrafficData.map(item => ({
+    date: item.date,
+    traffic: item.traffic,
+  }))
 
-export default function Page() {
   return (
     <SidebarProvider
       style={
@@ -26,11 +33,10 @@ export default function Page() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards />
+              <SectionCards stats={stats} loading={false} isAdmin={true} />
               <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
+                <ChartAreaInteractive data={chartData} loading={false} />
               </div>
-              <DataTable data={data} />
             </div>
           </div>
         </div>
