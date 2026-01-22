@@ -1,5 +1,5 @@
 // API Client for WireGuard Backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.denitanurramadhani.my.id';
 
 export interface ApiResponse<T = any> {
   status: string;
@@ -61,9 +61,12 @@ class ApiClient {
   async login(username: string, password: string) {
     const response = await this.request<{
       status: string;
+      username: string;
+      role: 'admin' | 'user';
       access_token: string;
-      token_type: string;
-      user: any;
+      refresh_token: string;
+      wireguard_enabled: boolean;
+      max_devices: number;
     }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
@@ -71,9 +74,24 @@ class ApiClient {
     
     if (response.access_token) {
       this.setToken(response.access_token);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('refresh_token', response.refresh_token);
+        localStorage.setItem('user_role', response.role);
+        localStorage.setItem('username', response.username);
+      }
     }
     
     return response;
+  }
+
+  async getCurrentUser() {
+    return this.request<{
+      status: string;
+      username: string;
+      role: 'admin' | 'user';
+      cn?: string;
+      mail?: string;
+    }>('/auth/me');
   }
 
   async logout() {
@@ -135,9 +153,86 @@ class ApiClient {
     return this.request('/myaccess/');
   }
 
-  // Admin endpoints
+  // Admin endpoints - User Management
   async getAdminUsers() {
-    return this.request('/admin/users');
+    return this.request<{
+      status: string;
+      users: Array<{
+        username: string;
+        cn?: string;
+        mail?: string;
+        wireguard_enabled: boolean;
+        max_devices: number;
+        device_count: number;
+        has_devices: boolean;
+      }>;
+      count: number;
+    }>('/admin/users');
+  }
+
+  async getUserDetail(username: string) {
+    return this.request<{
+      status: string;
+      username: string;
+      role: 'admin' | 'user';
+      ldap?: {
+        cn?: string;
+        mail?: string;
+        wireguard_enabled: boolean;
+        max_devices: number;
+      };
+      mysql?: {
+        role?: string;
+        created_at?: string;
+        updated_at?: string;
+      };
+      devices: {
+        count: number;
+        active: number;
+      };
+    }>(`/admin/users/${username}`);
+  }
+
+  async createUser(username: string, password: string, role: 'admin' | 'user' = 'user') {
+    return this.request<{
+      status: string;
+      message: string;
+      username: string;
+      uid_number: number;
+      gid_number: number;
+      role: 'admin' | 'user';
+      ldap_created: boolean;
+      mysql_created: boolean;
+    }>('/admin/add-user', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, role }),
+    });
+  }
+
+  async updateUserRole(username: string, role: 'admin' | 'user') {
+    return this.request<{
+      status: string;
+      message: string;
+      username: string;
+      role: 'admin' | 'user';
+      old_role?: string;
+    }>(`/admin/users/${username}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async deleteUser(username: string) {
+    return this.request<{
+      status: string;
+      message: string;
+      username: string;
+      mysql_deleted: boolean;
+      ldap_deleted: boolean;
+      warning: string;
+    }>(`/admin/users/${username}`, {
+      method: 'DELETE',
+    });
   }
 
   async getAdminDevices(status?: string, limit: number = 100, offset: number = 0) {

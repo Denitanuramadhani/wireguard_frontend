@@ -21,6 +21,7 @@ COPY . .
 # Build Next.js application
 # Set environment variable untuk build time
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_PUBLIC_API_URL=https://api.denitanurramadhani.my.id
 RUN npm run build
 
 # ============================================
@@ -51,6 +52,7 @@ EXPOSE 3000
 
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
+ENV NEXT_PUBLIC_API_URL=https://api.denitanurramadhani.my.id
 
 CMD ["node", "server.js"]
 

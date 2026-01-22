@@ -23,23 +23,20 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/lib/auth"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  
-  // Dummy user for preview
-  const user = {
-    username: "demo.user",
-    role: "Admin",
-  }
+  const { user, logout } = useAuth()
 
-  const initials = user.username
+  const initials = user?.username
     ? user.username.substring(0, 2).toUpperCase()
     : "U"
 
+  const displayRole = user?.role === "admin" ? "Admin" : "User"
+
   function handleLogout() {
-    // Will be implemented after backend integration
-    console.log("Logout clicked")
+    logout()
   }
 
   return (
@@ -55,9 +52,9 @@ export function NavUser() {
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.username}</span>
+                <span className="truncate font-medium">{user?.username || "Guest"}</span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {user.role || "User"}
+                  {displayRole}
                 </span>
               </div>
               <IconDotsVertical className="ml-auto size-4" />
@@ -75,9 +72,9 @@ export function NavUser() {
                   <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.username}</span>
+                  <span className="truncate font-medium">{user?.username || "Guest"}</span>
                   <span className="text-muted-foreground truncate text-xs">
-                    {user.role || "User"}
+                    {displayRole}
                   </span>
                 </div>
               </div>

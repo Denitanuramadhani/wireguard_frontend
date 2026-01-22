@@ -7,6 +7,8 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.denitanurramadhani.my.id
     networks:
       - wireguard-network
     healthcheck:

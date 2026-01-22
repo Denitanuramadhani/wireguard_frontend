@@ -141,7 +141,47 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  isAdmin?: boolean;
+}
+
+export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
+  // Menu untuk admin (hanya CRUD user)
+  const adminNavMain = [
+    {
+      title: "User Management",
+      url: "/admin/dashboard",
+      icon: IconUsers,
+    },
+  ]
+
+  // Menu untuk user (semua kecuali CRUD user)
+  const userNavMain = [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: IconDashboard,
+    },
+    {
+      title: "Devices",
+      url: "/dashboard/devices",
+      icon: IconListDetails,
+    },
+    {
+      title: "Monitoring",
+      url: "/dashboard/monitoring",
+      icon: IconChartBar,
+    },
+    {
+      title: "Peers",
+      url: "/dashboard/peers",
+      icon: IconFolder,
+    },
+  ]
+
+  const navMain = isAdmin ? adminNavMain : userNavMain
+  const dashboardUrl = isAdmin ? "/admin/dashboard" : "/dashboard"
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -151,7 +191,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href="/dashboard">
+              <Link href={dashboardUrl}>
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">WireGuard</span>
               </Link>
@@ -160,7 +200,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

@@ -4,16 +4,14 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { AppSidebar } from "@/components/app-sidebar"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { dummyStats, dummyTrafficData } from "@/lib/dummy-data"
+import { UserManagement } from "@/components/user-management"
 
-export default function DashboardPage() {
+export default function AdminDashboardPage() {
   const { user, loading, isAdmin } = useAuth()
   const router = useRouter()
 
@@ -21,13 +19,13 @@ export default function DashboardPage() {
     if (!loading) {
       if (!user) {
         router.push('/login')
-      } else if (isAdmin) {
-        router.push('/admin/dashboard')
+      } else if (!isAdmin) {
+        router.push('/dashboard')
       }
     }
   }, [user, loading, isAdmin, router])
 
-  if (loading || !user || isAdmin) {
+  if (loading || !user || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -38,13 +36,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Using dummy data for preview
-  const stats = dummyStats
-  const chartData = dummyTrafficData.map(item => ({
-    date: item.date,
-    traffic: item.traffic,
-  }))
-
   return (
     <SidebarProvider
       style={
@@ -54,15 +45,20 @@ export default function DashboardPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" isAdmin={false} />
+      <AppSidebar variant="inset" isAdmin={true} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards stats={stats} loading={false} isAdmin={false} />
               <div className="px-4 lg:px-6">
-                <ChartAreaInteractive data={chartData} loading={false} />
+                <div className="mb-6">
+                  <h1 className="text-3xl font-bold">User Management</h1>
+                  <p className="text-muted-foreground mt-2">
+                    Manage users and their roles
+                  </p>
+                </div>
+                <UserManagement />
               </div>
             </div>
           </div>
@@ -71,3 +67,4 @@ export default function DashboardPage() {
     </SidebarProvider>
   )
 }
+

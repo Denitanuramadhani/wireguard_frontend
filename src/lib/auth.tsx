@@ -31,16 +31,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('token');
     if (token) {
       api.setToken(token);
-      // Try to get user info from myaccess endpoint
-      api.getMyAccess()
-        .then((data: any) => {
-          if (data?.user) {
-            setUser(data.user);
-          }
+      // Get current user info including role
+      api.getCurrentUser()
+        .then((data) => {
+          setUser({
+            username: data.username,
+            role: data.role,
+            cn: data.cn,
+            mail: data.mail,
+          });
         })
         .catch(() => {
           // Token invalid, clear it
           api.setToken(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('username');
+          }
         })
         .finally(() => {
           setLoading(false);
@@ -53,8 +62,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       const response = await api.login(username, password);
-      if (response.user) {
-        setUser(response.user);
+      // Set user info
+      setUser({
+        username: response.username,
+        role: response.role,
+      });
+      
+      // Redirect berdasarkan role
+      if (response.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
         router.push('/dashboard');
       }
     } catch (error: any) {
@@ -65,6 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     api.logout();
     setUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('username');
+    }
     router.push('/login');
   };
 
