@@ -46,8 +46,8 @@ export default function DashboardPage() {
       setDataLoading(true)
       
       // Load devices to get stats
-      const devicesResponse = await api.getMyDevices()
-      const devices = Array.isArray(devicesResponse) ? devicesResponse : devicesResponse.devices || []
+      const devicesResponse = await api.getMyDevices() as any
+      const devices = Array.isArray(devicesResponse) ? devicesResponse : (devicesResponse.devices || [])
       
       const activeDevices = devices.filter((d: any) => d.status === 'active').length
       const totalTraffic = devices.reduce((sum: number, d: any) => {
@@ -55,7 +55,7 @@ export default function DashboardPage() {
       }, 0)
 
       // Load traffic analytics
-      const trafficResponse = await api.getTrafficAnalytics(undefined, 24)
+      const trafficResponse = await api.getTrafficAnalytics(undefined, 24) as any
       const analytics = Array.isArray(trafficResponse) ? trafficResponse : (trafficResponse.data || [])
       
       setStats({

@@ -67,17 +67,17 @@ export default function MonitoringPage() {
       setLoading(true)
       
       // Load system stats
-      const statsResponse = await api.getSystemStats()
+      const statsResponse = await api.getSystemStats() as any
       setStats(statsResponse.statistics || {})
       
       // Load alerts
-      const alertsResponse = await api.getAlerts(50)
-      const alertsList = Array.isArray(alertsResponse) ? alertsResponse : alertsResponse.alerts || []
+      const alertsResponse = await api.getAlerts(50) as any
+      const alertsList = Array.isArray(alertsResponse) ? alertsResponse : (alertsResponse.alerts || [])
       setAlerts(alertsList)
       
       // Load audit logs
-      const auditResponse = await api.getAuditLogs(undefined, undefined, undefined, 100, 0)
-      const logsList = Array.isArray(auditResponse) ? auditResponse : auditResponse.logs || []
+      const auditResponse = await api.getAuditLogs(undefined, undefined, undefined, 100, 0) as any
+      const logsList = Array.isArray(auditResponse) ? auditResponse : (auditResponse.logs || [])
       setAuditLogs(logsList)
     } catch (error: any) {
       toast.error(error.message || "Failed to load monitoring data")

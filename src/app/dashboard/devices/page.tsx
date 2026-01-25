@@ -23,7 +23,8 @@ import { api } from "@/lib/api"
 import { toast } from "sonner"
 
 interface Device {
-  id: number
+  id?: number
+  device_id?: number
   device_name: string
   vpn_ip: string
   status: string
@@ -47,8 +48,8 @@ export default function DevicesPage() {
   const loadDevices = async () => {
     try {
       setLoading(true)
-      const response = await api.getMyDevices()
-      const devicesList = Array.isArray(response) ? response : response.devices || []
+      const response = await api.getMyDevices() as any
+      const devicesList = Array.isArray(response) ? response : (response.devices || [])
       setDevices(devicesList)
     } catch (error: any) {
       toast.error(error.message || "Failed to load devices")
@@ -93,7 +94,7 @@ export default function DevicesPage() {
 
   async function handleViewQR(deviceId: number) {
     try {
-      const response = await api.getDeviceQR(deviceId)
+      const response = await api.getDeviceQR(deviceId) as any
       // Open QR code in new window or show in modal
       if (response.qr_code) {
         const qrUrl = `data:image/png;base64,${response.qr_code}`

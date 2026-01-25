@@ -37,8 +37,8 @@ export default function PeersPage() {
   const loadPeers = async () => {
     try {
       setLoading(true)
-      const response = await api.getPeers()
-      const peersList = Array.isArray(response) ? response : response.peers || []
+      const response = await api.getPeers() as any
+      const peersList = Array.isArray(response) ? response : (response.peers || [])
       setPeers(peersList)
     } catch (error: any) {
       toast.error(error.message || "Failed to load peers")
