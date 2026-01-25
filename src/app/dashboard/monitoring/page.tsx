@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SimpleTable } from "@/components/simple-table"
 import { SiteHeader } from "@/components/site-header"
@@ -16,13 +17,77 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { IconAlertCircle, IconInfoCircle, IconAlertTriangle, IconX } from "@tabler/icons-react"
-import { dummyAlerts, dummyAuditLogs, dummySystemStats } from "@/lib/dummy-data"
+import { api } from "@/lib/api"
+import { toast } from "sonner"
+
+interface Alert {
+  severity: string
+  message: string
+  timestamp: string
+}
+
+interface AuditLog {
+  action: string
+  ldap_uid: string
+  performed_by: string
+  timestamp: string
+}
+
+interface SystemStats {
+  devices?: {
+    total: number
+    active: number
+    revoked: number
+    expired: number
+  }
+  users?: {
+    total_with_devices: number
+    total_enabled: number
+  }
+  alerts?: {
+    critical: number
+    high: number
+    medium: number
+    low: number
+  }
+}
 
 export default function MonitoringPage() {
-  // Using dummy data for preview
-  const alerts = dummyAlerts
-  const auditLogs = dummyAuditLogs
-  const stats = dummySystemStats.statistics
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const [stats, setStats] = useState<SystemStats>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadMonitoringData()
+  }, [])
+
+  const loadMonitoringData = async () => {
+    try {
+      setLoading(true)
+      
+      // Load system stats
+      const statsResponse = await api.getSystemStats()
+      setStats(statsResponse.statistics || {})
+      
+      // Load alerts
+      const alertsResponse = await api.getAlerts(50)
+      const alertsList = Array.isArray(alertsResponse) ? alertsResponse : alertsResponse.alerts || []
+      setAlerts(alertsList)
+      
+      // Load audit logs
+      const auditResponse = await api.getAuditLogs(undefined, undefined, undefined, 100, 0)
+      const logsList = Array.isArray(auditResponse) ? auditResponse : auditResponse.logs || []
+      setAuditLogs(logsList)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load monitoring data")
+      setStats({})
+      setAlerts([])
+      setAuditLogs([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -136,7 +201,7 @@ export default function MonitoringPage() {
                     <SimpleTable 
                       data={alerts} 
                       columns={alertColumns}
-                      loading={false}
+                      loading={loading}
                     />
                   </CardContent>
                 </Card>
@@ -150,7 +215,7 @@ export default function MonitoringPage() {
                     <SimpleTable 
                       data={auditLogs} 
                       columns={auditColumns}
-                      loading={false}
+                      loading={loading}
                     />
                   </CardContent>
                 </Card>

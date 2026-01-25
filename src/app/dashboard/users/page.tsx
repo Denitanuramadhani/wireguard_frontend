@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SimpleTable } from "@/components/simple-table"
 import { SiteHeader } from "@/components/site-header"
@@ -11,14 +12,49 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { IconShieldCheck, IconShieldX } from "@tabler/icons-react"
-import { dummyUsers } from "@/lib/dummy-data"
+import { api } from "@/lib/api"
+
+interface User {
+  username: string
+  wireguard_enabled: boolean
+  max_devices: number
+  device_count: number
+}
 
 export default function UsersPage() {
-  // Using dummy data for preview
-  const users = dummyUsers
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
 
-  function handleToggleVPN(username: string, enabled: boolean) {
-    toast.info("Toggle VPN functionality will be available after backend integration")
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      const response = await api.getAdminUsers()
+      setUsers(response.users || [])
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load users")
+      setUsers([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleToggleVPN(username: string, enabled: boolean) {
+    try {
+      if (enabled) {
+        await api.enableUserVPN(username)
+        toast.success("VPN access enabled for user")
+      } else {
+        await api.disableUserVPN(username)
+        toast.success("VPN access disabled for user")
+      }
+      loadUsers()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to toggle VPN access")
+    }
   }
 
   const columns = [
@@ -93,7 +129,7 @@ export default function UsersPage() {
                 <SimpleTable 
                   data={users} 
                   columns={columns}
-                  loading={false}
+                  loading={loading}
                 />
               </div>
             </div>

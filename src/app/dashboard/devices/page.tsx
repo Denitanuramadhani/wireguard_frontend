@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SimpleTable } from "@/components/simple-table"
 import { SiteHeader } from "@/components/site-header"
@@ -19,35 +19,102 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { IconPlus, IconQrcode, IconTrash } from "@tabler/icons-react"
-import { dummyDevices } from "@/lib/dummy-data"
+import { api } from "@/lib/api"
 import { toast } from "sonner"
 
+interface Device {
+  id: number
+  device_name: string
+  vpn_ip: string
+  status: string
+  created_at: string
+  last_seen?: string
+  transfer_rx?: number
+  transfer_tx?: number
+  transfer_total?: number
+}
+
 export default function DevicesPage() {
-  // Using dummy data for preview
-  const devices = dummyDevices
+  const [devices, setDevices] = useState<Device[]>([])
   const [deviceName, setDeviceName] = useState("")
   const [adding, setAdding] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  function handleAddDevice() {
+  useEffect(() => {
+    loadDevices()
+  }, [])
+
+  const loadDevices = async () => {
+    try {
+      setLoading(true)
+      const response = await api.getMyDevices()
+      const devicesList = Array.isArray(response) ? response : response.devices || []
+      setDevices(devicesList)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load devices")
+      setDevices([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleAddDevice() {
     if (!deviceName.trim()) {
-      toast.info("Please enter a device name")
+      toast.error("Please enter a device name")
       return
     }
-    toast.info("Add device functionality will be available after backend integration")
-    setDeviceName("")
+    
+    try {
+      setAdding(true)
+      await api.addDevice(deviceName.trim())
+      toast.success("Device added successfully")
+      setDeviceName("")
+      loadDevices()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add device")
+    } finally {
+      setAdding(false)
+    }
   }
 
-  function handleRevokeDevice(deviceId: number) {
-    toast.info("Revoke device functionality will be available after backend integration")
+  async function handleRevokeDevice(deviceId: number) {
+    if (!confirm("Are you sure you want to revoke this device?")) {
+      return
+    }
+
+    try {
+      await api.revokeDevice(deviceId)
+      toast.success("Device revoked successfully")
+      loadDevices()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to revoke device")
+    }
   }
 
-  function handleViewQR(deviceId: number) {
-    toast.info("QR code view will be available after backend integration")
+  async function handleViewQR(deviceId: number) {
+    try {
+      const response = await api.getDeviceQR(deviceId)
+      // Open QR code in new window or show in modal
+      if (response.qr_code) {
+        const qrUrl = `data:image/png;base64,${response.qr_code}`
+        window.open(qrUrl, '_blank')
+      } else if (response.qr_url) {
+        window.open(response.qr_url, '_blank')
+      } else {
+        toast.info("QR code data not available. Try regenerating the QR code.")
+      }
+    } catch (error: any) {
+      if (error.message?.includes('expired') || error.message?.includes('regenerate')) {
+        toast.error(error.message || "QR code expired. Please regenerate it.")
+      } else {
+        toast.error(error.message || "Failed to load QR code")
+      }
+    }
   }
 
   // Transform devices data for table
   const tableData = devices.map((device) => ({
-    id: device.id,
+    id: device.device_id || device.id,
     device_name: device.device_name,
     vpn_ip: device.vpn_ip,
     status: device.status,
@@ -178,7 +245,7 @@ export default function DevicesPage() {
                 <SimpleTable 
                   data={tableData} 
                   columns={columns}
-                  loading={false}
+                  loading={loading}
                 />
               </div>
             </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SimpleTable } from "@/components/simple-table"
 import { SiteHeader } from "@/components/site-header"
@@ -14,11 +15,38 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { dummyPeers } from "@/lib/dummy-data"
+import { api } from "@/lib/api"
+import { toast } from "sonner"
+
+interface Peer {
+  public_key: string
+  allowed_ips: string
+  transfer_rx?: number
+  transfer_tx?: number
+  last_handshake?: string
+}
 
 export default function PeersPage() {
-  // Using dummy data for preview
-  const peers = dummyPeers
+  const [peers, setPeers] = useState<Peer[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadPeers()
+  }, [])
+
+  const loadPeers = async () => {
+    try {
+      setLoading(true)
+      const response = await api.getPeers()
+      const peersList = Array.isArray(response) ? response : response.peers || []
+      setPeers(peersList)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load peers")
+      setPeers([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const columns = [
     {
@@ -105,7 +133,7 @@ export default function PeersPage() {
                     <SimpleTable 
                       data={peers} 
                       columns={columns}
-                      loading={false}
+                      loading={loading}
                     />
                   </CardContent>
                 </Card>
