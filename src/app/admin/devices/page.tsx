@@ -35,7 +35,8 @@ function AdminDevicesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  const statusFilter = searchParams.get('status') || ''
+  const statusFilterParam = searchParams.get('status') || ''
+  const statusFilter = statusFilterParam === 'all' ? '' : statusFilterParam
   const page = parseInt(searchParams.get('page') || '1')
   const limit = 100
   const offset = (page - 1) * limit
@@ -77,7 +78,9 @@ function AdminDevicesContent() {
 
   const handleStatusFilterChange = (value: string) => {
     const params = new URLSearchParams()
-    if (value) params.set('status', value)
+    if (value && value !== "all") {
+      params.set('status', value)
+    }
     router.push(`/admin/devices?${params.toString()}`)
   }
 
@@ -183,12 +186,12 @@ function AdminDevicesContent() {
                   </CardHeader>
                   <CardContent>
                     <div className="mb-4">
-                      <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                      <Select value={statusFilterParam || "all"} onValueChange={handleStatusFilterChange}>
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Status</SelectItem>
+                          <SelectItem value="all">All Status</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
                           <SelectItem value="revoked">Revoked</SelectItem>
                           <SelectItem value="expired">Expired</SelectItem>

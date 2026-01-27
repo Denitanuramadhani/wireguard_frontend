@@ -57,8 +57,10 @@ function MonitoringContent() {
   const searchParams = useSearchParams()
   
   // Get filter params from URL
-  const actionFilter = searchParams.get('action') || ''
-  const statusFilter = searchParams.get('status') || ''
+  const actionFilterParam = searchParams.get('action') || ''
+  const statusFilterParam = searchParams.get('status') || ''
+  const actionFilter = actionFilterParam === 'all' ? '' : actionFilterParam
+  const statusFilter = statusFilterParam === 'all' ? '' : statusFilterParam
   const page = parseInt(searchParams.get('page') || '1')
   const limit = 50
   const offset = (page - 1) * limit
@@ -68,8 +70,8 @@ function MonitoringContent() {
   const [loading, setLoading] = useState(true)
   const [totalLogs, setTotalLogs] = useState(0)
   const [totalDevices, setTotalDevices] = useState(0)
-  const [actionFilterValue, setActionFilterValue] = useState(actionFilter)
-  const [statusFilterValue, setStatusFilterValue] = useState(statusFilter)
+  const [actionFilterValue, setActionFilterValue] = useState(actionFilterParam || 'all')
+  const [statusFilterValue, setStatusFilterValue] = useState(statusFilterParam || 'all')
 
   useEffect(() => {
     if (!authLoading) {
@@ -128,23 +130,23 @@ function MonitoringContent() {
   const handleActionFilterChange = (value: string) => {
     setActionFilterValue(value)
     const params = new URLSearchParams()
-    if (value) params.set('action', value)
-    if (statusFilter) params.set('status', statusFilter)
+    if (value && value !== "all") params.set('action', value)
+    if (statusFilterParam && statusFilterParam !== "all") params.set('status', statusFilterParam)
     router.push(`/dashboard/monitoring?${params.toString()}`)
   }
 
   const handleStatusFilterChange = (value: string) => {
     setStatusFilterValue(value)
     const params = new URLSearchParams()
-    if (actionFilter) params.set('action', actionFilter)
-    if (value) params.set('status', value)
+    if (actionFilterParam && actionFilterParam !== "all") params.set('action', actionFilterParam)
+    if (value && value !== "all") params.set('status', value)
     router.push(`/dashboard/monitoring?${params.toString()}`)
   }
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams()
-    if (actionFilter) params.set('action', actionFilter)
-    if (statusFilter) params.set('status', statusFilter)
+    if (actionFilterParam && actionFilterParam !== "all") params.set('action', actionFilterParam)
+    if (statusFilterParam && statusFilterParam !== "all") params.set('status', statusFilterParam)
     params.set('page', newPage.toString())
     router.push(`/dashboard/monitoring?${params.toString()}`)
   }
@@ -262,7 +264,7 @@ function MonitoringContent() {
                           <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Status</SelectItem>
+                          <SelectItem value="all">All Status</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
                           <SelectItem value="revoked">Revoked</SelectItem>
                           <SelectItem value="expired">Expired</SelectItem>
@@ -289,7 +291,7 @@ function MonitoringContent() {
                           <SelectValue placeholder="Filter by action" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Actions</SelectItem>
+                          <SelectItem value="all">All Actions</SelectItem>
                           <SelectItem value="device_added">Device Added</SelectItem>
                           <SelectItem value="device_revoked">Device Revoked</SelectItem>
                           <SelectItem value="login_success">Login Success</SelectItem>
