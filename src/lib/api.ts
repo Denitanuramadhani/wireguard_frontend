@@ -129,6 +129,10 @@ class ApiClient {
     return this.request(`/devices/${deviceId}/qr`);
   }
 
+  async getDeviceConfig(deviceId: number) {
+    return this.request(`/devices/${deviceId}/config`);
+  }
+
   async regenerateQR(deviceId: number) {
     return this.request(`/devices/${deviceId}/regenerate-qr`, {
       method: 'POST',
@@ -306,6 +310,31 @@ class ApiClient {
   // Peers endpoint
   async getPeers() {
     return this.request('/peers/');
+  }
+
+  // User Monitoring endpoints (for regular users)
+  async getUserAuditLogs(
+    action?: string,
+    limit: number = 50,
+    offset: number = 0
+  ) {
+    const params = new URLSearchParams();
+    if (action) params.append('action', action);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    return this.request(`/monitoring/audit-logs?${params.toString()}`);
+  }
+
+  async getUserDevicesMonitoring(
+    status?: string,
+    limit: number = 100,
+    offset: number = 0
+  ) {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    return this.request(`/monitoring/devices?${params.toString()}`);
   }
 }
 

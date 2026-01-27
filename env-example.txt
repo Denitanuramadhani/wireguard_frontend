@@ -1,0 +1,38 @@
+# ======================
+# WIREGUARD FRONTEND ENVIRONMENT VARIABLES
+# ======================
+# Copy this file to .env.local for local development
+# Or set these variables in your deployment platform (Vercel, Docker, etc.)
+# ======================
+
+# ======================
+# API CONFIGURATION
+# ======================
+# Backend API URL
+# Production: https://api.denita-nur.my.id
+# Local Development: http://localhost:8000
+NEXT_PUBLIC_API_URL=https://api.denita-nur.my.id
+# NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# ======================
+# APPLICATION URL
+# ======================
+# Frontend application URL
+# Production: https://wg.denita-nur.my.id
+# Local Development: http://localhost:3000
+NEXTAUTH_URL=https://wg.denita-nur.my.id
+# NEXTAUTH_URL=http://localhost:3000
+
+# ======================
+# NEXT.JS CONFIGURATION
+# ======================
+# Disable Next.js telemetry (optional)
+NEXT_TELEMETRY_DISABLED=1
+
+# ======================
+# NOTES
+# ======================
+# - NEXT_PUBLIC_* variables are exposed to the browser
+# - NEXTAUTH_URL is used for authentication callbacks (if using NextAuth)
+# - For local development, uncomment the localhost URLs above
+

@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useAuth } from "@/lib/auth"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SimpleTable } from "@/components/simple-table"
 import { SiteHeader } from "@/components/site-header"
@@ -16,121 +18,136 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { IconAlertCircle, IconInfoCircle, IconAlertTriangle, IconX } from "@tabler/icons-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
-
-interface Alert {
-  severity: string
-  message: string
-  timestamp: string
-}
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 
 interface AuditLog {
   action: string
-  ldap_uid: string
+  ldap_uid?: string
   performed_by: string
-  timestamp: string
+  created_at: string
+  timestamp?: string
 }
 
-interface SystemStats {
-  devices?: {
-    total: number
-    active: number
-    revoked: number
-    expired: number
-  }
-  users?: {
-    total_with_devices: number
-    total_enabled: number
-  }
-  alerts?: {
-    critical: number
-    high: number
-    medium: number
-    low: number
-  }
+interface Device {
+  device_id: number
+  device_name: string
+  vpn_ip: string
+  status: string
+  created_at: string
+  last_seen?: string
+  transfer_rx?: number
+  transfer_tx?: number
+  transfer_total?: number
 }
 
-export default function MonitoringPage() {
-  const [alerts, setAlerts] = useState<Alert[]>([])
+function MonitoringContent() {
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Get filter params from URL
+  const actionFilter = searchParams.get('action') || ''
+  const statusFilter = searchParams.get('status') || ''
+  const page = parseInt(searchParams.get('page') || '1')
+  const limit = 50
+  const offset = (page - 1) * limit
+
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
-  const [stats, setStats] = useState<SystemStats>({})
+  const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
+  const [totalLogs, setTotalLogs] = useState(0)
+  const [totalDevices, setTotalDevices] = useState(0)
+  const [actionFilterValue, setActionFilterValue] = useState(actionFilter)
+  const [statusFilterValue, setStatusFilterValue] = useState(statusFilter)
 
   useEffect(() => {
-    loadMonitoringData()
-  }, [])
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login')
+      }
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (user) {
+      loadMonitoringData()
+    }
+  }, [user, actionFilter, statusFilter, page])
 
   const loadMonitoringData = async () => {
     try {
       setLoading(true)
       
-      // Load system stats
-      const statsResponse = await api.getSystemStats() as any
-      setStats(statsResponse.statistics || {})
-      
-      // Load alerts
-      const alertsResponse = await api.getAlerts(50) as any
-      const alertsList = Array.isArray(alertsResponse) ? alertsResponse : (alertsResponse.alerts || [])
-      setAlerts(alertsList)
-      
-      // Load audit logs
-      const auditResponse = await api.getAuditLogs(undefined, undefined, undefined, 100, 0) as any
+      // Load audit logs with filters
+      const auditResponse = await api.getUserAuditLogs(
+        actionFilter || undefined,
+        limit,
+        offset
+      ) as any
       const logsList = Array.isArray(auditResponse) ? auditResponse : (auditResponse.logs || [])
       setAuditLogs(logsList)
+      setTotalLogs(auditResponse.total || auditResponse.count || logsList.length)
+      
+      // Load devices with filters
+      const devicesResponse = await api.getUserDevicesMonitoring(
+        statusFilter || undefined,
+        limit,
+        offset
+      ) as any
+      const devicesList = Array.isArray(devicesResponse) ? devicesResponse : (devicesResponse.devices || [])
+      setDevices(devicesList)
+      setTotalDevices(devicesResponse.total || devicesList.length)
     } catch (error: any) {
       toast.error(error.message || "Failed to load monitoring data")
-      setStats({})
-      setAlerts([])
       setAuditLogs([])
+      setDevices([])
     } finally {
       setLoading(false)
     }
   }
 
-  const getSeverityIcon = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return <IconX className="h-4 w-4 text-red-500" />
-      case "high":
-        return <IconAlertCircle className="h-4 w-4 text-orange-500" />
-      case "medium":
-        return <IconAlertTriangle className="h-4 w-4 text-yellow-500" />
-      default:
-        return <IconInfoCircle className="h-4 w-4 text-blue-500" />
-    }
+  const updateFilters = () => {
+    const params = new URLSearchParams()
+    if (actionFilterValue) params.set('action', actionFilterValue)
+    if (statusFilterValue) params.set('status', statusFilterValue)
+    if (page > 1) params.set('page', page.toString())
+    router.push(`/dashboard/monitoring?${params.toString()}`)
   }
 
-  const alertColumns = [
-    {
-      accessorKey: "severity",
-      header: "Severity",
-      cell: (row: any) => {
-        const severity = row.severity || "low"
-        return (
-          <div className="flex items-center gap-2">
-            {getSeverityIcon(severity)}
-            <Badge variant="outline" className="capitalize">
-              {severity}
-            </Badge>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "message",
-      header: "Message",
-    },
-    {
-      accessorKey: "timestamp",
-      header: "Time",
-      cell: (row: any) => {
-        const date = new Date(row.timestamp)
-        return date.toLocaleString()
-      },
-    },
-  ]
+  const handleActionFilterChange = (value: string) => {
+    setActionFilterValue(value)
+    const params = new URLSearchParams()
+    if (value) params.set('action', value)
+    if (statusFilter) params.set('status', statusFilter)
+    router.push(`/dashboard/monitoring?${params.toString()}`)
+  }
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilterValue(value)
+    const params = new URLSearchParams()
+    if (actionFilter) params.set('action', actionFilter)
+    if (value) params.set('status', value)
+    router.push(`/dashboard/monitoring?${params.toString()}`)
+  }
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams()
+    if (actionFilter) params.set('action', actionFilter)
+    if (statusFilter) params.set('status', statusFilter)
+    params.set('page', newPage.toString())
+    router.push(`/dashboard/monitoring?${params.toString()}`)
+  }
 
   const auditColumns = [
     {
@@ -140,20 +157,82 @@ export default function MonitoringPage() {
     {
       accessorKey: "ldap_uid",
       header: "User",
+      cell: (row: any) => row.ldap_uid || row.performed_by || "-",
     },
     {
       accessorKey: "performed_by",
       header: "Performed By",
     },
     {
-      accessorKey: "timestamp",
+      accessorKey: "created_at",
       header: "Time",
       cell: (row: any) => {
-        const date = new Date(row.timestamp)
+        const dateStr = row.timestamp || row.created_at
+        if (!dateStr) return "-"
+        const date = new Date(dateStr)
         return date.toLocaleString()
       },
     },
   ]
+
+  const deviceColumns = [
+    {
+      accessorKey: "device_name",
+      header: "Device Name",
+    },
+    {
+      accessorKey: "vpn_ip",
+      header: "VPN IP",
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: (row: any) => {
+        const status = row.status
+        return (
+          <Badge variant={status === "active" ? "default" : "secondary"}>
+            {status}
+          </Badge>
+        )
+      },
+    },
+    {
+      accessorKey: "transfer_total",
+      header: "Total Traffic",
+      cell: (row: any) => {
+        const bytes = row.transfer_total || 0
+        if (bytes >= 1024 * 1024 * 1024) {
+          return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+        } else if (bytes >= 1024 * 1024) {
+          return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+        } else if (bytes >= 1024) {
+          return `${(bytes / 1024).toFixed(2)} KB`
+        }
+        return `${bytes} B`
+      },
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created",
+      cell: (row: any) => {
+        const date = new Date(row.created_at)
+        return date.toLocaleDateString()
+      },
+    },
+  ]
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const totalPages = Math.ceil(totalLogs / limit)
 
   return (
     <SidebarProvider
@@ -164,43 +243,35 @@ export default function MonitoringPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" isAdmin={false} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-3">
-                <Card>
-                  <CardHeader>
-                    <CardDescription>Total Devices</CardDescription>
-                    <CardTitle className="text-2xl">{stats.devices?.total || 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardDescription>Active Devices</CardDescription>
-                    <CardTitle className="text-2xl">{stats.devices?.active || 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardDescription>Critical Alerts</CardDescription>
-                    <CardTitle className="text-2xl">{stats.alerts?.critical || 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-              </div>
-
               <div className="px-4 lg:px-6">
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Recent Alerts</CardTitle>
-                    <CardDescription>System alerts and notifications</CardDescription>
+                    <CardTitle>My Devices</CardTitle>
+                    <CardDescription>Your registered devices</CardDescription>
                   </CardHeader>
                   <CardContent>
+                    <div className="mb-4 flex gap-2">
+                      <Select value={statusFilterValue} onValueChange={handleStatusFilterChange}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Status</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="revoked">Revoked</SelectItem>
+                          <SelectItem value="expired">Expired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <SimpleTable 
-                      data={alerts} 
-                      columns={alertColumns}
+                      data={devices} 
+                      columns={deviceColumns}
                       loading={loading}
                     />
                   </CardContent>
@@ -209,14 +280,55 @@ export default function MonitoringPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Audit Logs</CardTitle>
-                    <CardDescription>System activity and changes</CardDescription>
+                    <CardDescription>Your activity and changes</CardDescription>
                   </CardHeader>
                   <CardContent>
+                    <div className="mb-4 flex gap-2">
+                      <Select value={actionFilterValue} onValueChange={handleActionFilterChange}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Filter by action" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Actions</SelectItem>
+                          <SelectItem value="device_added">Device Added</SelectItem>
+                          <SelectItem value="device_revoked">Device Revoked</SelectItem>
+                          <SelectItem value="login_success">Login Success</SelectItem>
+                          <SelectItem value="login_failed">Login Failed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <SimpleTable 
                       data={auditLogs} 
                       columns={auditColumns}
                       loading={loading}
                     />
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="text-sm text-muted-foreground">
+                          Page {page} of {totalPages} ({totalLogs} total)
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(page - 1)}
+                            disabled={page <= 1}
+                          >
+                            <IconChevronLeft className="h-4 w-4" />
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(page + 1)}
+                            disabled={page >= totalPages}
+                          >
+                            Next
+                            <IconChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -225,5 +337,20 @@ export default function MonitoringPage() {
         </div>
       </SidebarInset>
     </SidebarProvider>
+  )
+}
+
+export default function MonitoringPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <MonitoringContent />
+    </Suspense>
   )
 }

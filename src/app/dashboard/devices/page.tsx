@@ -69,7 +69,7 @@ export default function DevicesPage() {
       setAdding(true)
       await api.addDevice(deviceName.trim())
       toast.success("Device added successfully")
-      setDeviceName("")
+    setDeviceName("")
       loadDevices()
     } catch (error: any) {
       toast.error(error.message || "Failed to add device")
@@ -89,7 +89,7 @@ export default function DevicesPage() {
       loadDevices()
     } catch (error: any) {
       toast.error(error.message || "Failed to revoke device")
-    }
+  }
   }
 
   async function handleViewQR(deviceId: number) {

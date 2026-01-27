@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SimpleTable } from "@/components/simple-table"
 import { SiteHeader } from "@/components/site-header"
@@ -22,12 +24,27 @@ interface User {
 }
 
 export default function UsersPage() {
+  const { user, loading: authLoading, isAdmin } = useAuth()
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadUsers()
-  }, [])
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login')
+      } else if (!isAdmin) {
+        // Redirect non-admin users to their dashboard
+        router.push('/dashboard')
+      }
+    }
+  }, [user, authLoading, isAdmin, router])
+
+  useEffect(() => {
+    if (user && isAdmin) {
+      loadUsers()
+    }
+  }, [user, isAdmin])
 
   const loadUsers = async () => {
     try {
@@ -110,6 +127,17 @@ export default function UsersPage() {
     },
   ]
 
+  if (authLoading || !user || !isAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <SidebarProvider
       style={
@@ -119,7 +147,7 @@ export default function UsersPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" isAdmin={true} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">

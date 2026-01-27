@@ -3,21 +3,17 @@
 import Link from "next/link"
 import * as React from "react"
 import {
-  IconCamera,
   IconChartBar,
   IconDashboard,
-  IconDatabase,
-  IconFileAi,
-  IconFileDescription,
-  IconFileWord,
+  IconDownload,
   IconFolder,
-  IconHelp,
   IconInnerShadowTop,
   IconListDetails,
-  IconReport,
-  IconSearch,
   IconSettings,
   IconUsers,
+  IconShield,
+  IconFileAnalytics,
+  IconUser,
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
@@ -34,128 +30,49 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+const navSecondary = [
+  {
+    title: "Settings",
+    url: "#",
+    icon: IconSettings,
   },
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: IconDashboard,
-    },
-    {
-      title: "Devices",
-      url: "/dashboard/devices",
-      icon: IconListDetails,
-    },
-    {
-      title: "Monitoring",
-      url: "/dashboard/monitoring",
-      icon: IconChartBar,
-    },
-    {
-      title: "Peers",
-      url: "/dashboard/peers",
-      icon: IconFolder,
-    },
-    {
-      title: "Users",
-      url: "/dashboard/users",
-      icon: IconUsers,
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
-    },
-  ],
-}
+]
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   isAdmin?: boolean;
 }
 
 export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
-  // Menu untuk admin (hanya CRUD user)
+  // Menu untuk admin (semua menu admin yang pakai endpoint /admin)
   const adminNavMain = [
     {
-      title: "User Management",
+      title: "Dashboard",
       url: "/admin/dashboard",
+      icon: IconDashboard,
+    },
+    {
+      title: "User Management",
+      url: "/dashboard/users",
       icon: IconUsers,
+    },
+    {
+      title: "Devices",
+      url: "/admin/devices",
+      icon: IconListDetails,
+    },
+    {
+      title: "Monitoring",
+      url: "/admin/monitoring",
+      icon: IconChartBar,
+    },
+    {
+      title: "Bandwidth",
+      url: "/admin/bandwidth",
+      icon: IconFileAnalytics,
     },
   ]
 
-  // Menu untuk user (semua kecuali CRUD user)
+  // Menu untuk user biasa (tidak pakai endpoint /admin)
   const userNavMain = [
     {
       title: "Dashboard",
@@ -168,14 +85,34 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
       icon: IconListDetails,
     },
     {
-      title: "Monitoring",
-      url: "/dashboard/monitoring",
+      title: "Analytics",
+      url: "/dashboard/analytics",
       icon: IconChartBar,
+    },
+    {
+      title: "My Access",
+      url: "/dashboard/myaccess",
+      icon: IconShield,
+    },
+    {
+      title: "Downloads",
+      url: "/dashboard/downloads",
+      icon: IconDownload,
+    },
+    {
+      title: "Profile",
+      url: "/dashboard/profile",
+      icon: IconUser,
     },
     {
       title: "Peers",
       url: "/dashboard/peers",
       icon: IconFolder,
+    },
+    {
+      title: "Monitoring",
+      url: "/dashboard/monitoring",
+      icon: IconChartBar,
     },
   ]
 
@@ -201,7 +138,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

@@ -38,14 +38,6 @@ export function SimpleTable<T extends Record<string, any>>({
     )
   }
 
-  if (data.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No data available
-      </div>
-    )
-  }
-
   return (
     <div className="rounded-md border">
       <Table>
@@ -59,17 +51,25 @@ export function SimpleTable<T extends Record<string, any>>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((row, rowIndex) => (
-            <TableRow key={rowIndex}>
-              {columns.map((column) => (
-                <TableCell key={String(column.accessorKey)}>
-                  {column.cell
-                    ? column.cell(row)
-                    : String(row[column.accessorKey as keyof T] ?? "")}
-                </TableCell>
-              ))}
+          {data.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
+                No data available
+              </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            data.map((row, rowIndex) => (
+              <TableRow key={rowIndex}>
+                {columns.map((column) => (
+                  <TableCell key={String(column.accessorKey)}>
+                    {column.cell
+                      ? column.cell(row)
+                      : String(row[column.accessorKey as keyof T] ?? "")}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>
