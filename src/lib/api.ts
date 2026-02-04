@@ -1,5 +1,5 @@
 // API Client for WireGuard Backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.denitanurramadhani.my.id';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.denitanurramadhani.my.id') + '/api/v1';
 
 export interface ApiResponse<T = any> {
   status: string;
@@ -71,7 +71,7 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
-    
+
     if (response.access_token) {
       this.setToken(response.access_token);
       if (typeof window !== 'undefined') {
@@ -80,7 +80,7 @@ class ApiClient {
         localStorage.setItem('username', response.username);
       }
     }
-    
+
     return response;
   }
 

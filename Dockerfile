@@ -21,7 +21,7 @@ COPY . .
 # Build Next.js application
 # Set environment variable untuk build time
 ENV NEXT_TELEMETRY_DISABLED 1
-ENV NEXT_PUBLIC_API_URL=https://api.denita-nur.my.id
+ENV NEXT_PUBLIC_API_URL=https://api.denita-nur.my.id/api/v1
 RUN npm run build
 
 # ============================================
