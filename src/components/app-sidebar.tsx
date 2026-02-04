@@ -52,7 +52,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
     },
     {
       title: "User Management",
-      url: "/dashboard/users",
+      url: "/admin/dashboard",
       icon: IconUsers,
     },
     {
@@ -89,11 +89,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
       url: "/dashboard/analytics",
       icon: IconChartBar,
     },
-    {
-      title: "My Access",
-      url: "/dashboard/myaccess",
-      icon: IconShield,
-    },
+
     {
       title: "Downloads",
       url: "/dashboard/downloads",

@@ -165,6 +165,8 @@ class ApiClient {
         username: string;
         cn?: string;
         mail?: string;
+        role: string;
+        is_active: boolean;
         wireguard_enabled: boolean;
         max_devices: number;
         device_count: number;
@@ -223,6 +225,16 @@ class ApiClient {
     }>(`/admin/users/${username}/role`, {
       method: 'PUT',
       body: JSON.stringify({ role }),
+    });
+  }
+
+  async updateUser(username: string, data: { username?: string; role?: string; is_active?: boolean }) {
+    return this.request<{
+      status: string;
+      message: string;
+    }>(`/admin/users/${username}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   }
 

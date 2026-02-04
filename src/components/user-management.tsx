@@ -45,6 +45,8 @@ interface User {
   username: string
   cn?: string
   mail?: string
+  role?: string
+  is_active?: boolean
   wireguard_enabled: boolean
   max_devices: number
   device_count: number
@@ -55,14 +57,22 @@ export function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  
-  // Form states
-  const [formData, setFormData] = useState({
+
+  // Create Form state
+  const [createFormData, setCreateFormData] = useState({
     username: "",
     password: "",
     role: "user" as "admin" | "user",
+  })
+
+  // Edit Form state
+  const [editFormData, setEditFormData] = useState({
+    username: "",
+    role: "user" as "admin" | "user",
+    is_active: true,
   })
 
   useEffect(() => {
@@ -83,28 +93,36 @@ export function UserManagement() {
 
   const handleCreate = async () => {
     try {
-      if (!formData.username || !formData.password) {
+      if (!createFormData.username || !createFormData.password) {
         toast.error("Username and password are required")
         return
       }
 
-      await api.createUser(formData.username, formData.password, formData.role)
+      await api.createUser(createFormData.username, createFormData.password, createFormData.role)
       toast.success("User created successfully")
       setCreateDialogOpen(false)
-      setFormData({ username: "", password: "", role: "user" })
+      setCreateFormData({ username: "", password: "", role: "user" })
       loadUsers()
     } catch (error: any) {
       toast.error(error.message || "Failed to create user")
     }
   }
 
-  const handleUpdateRole = async (username: string, role: "admin" | "user") => {
+  const handleEdit = async () => {
+    if (!selectedUser) return
+
     try {
-      await api.updateUserRole(username, role)
-      toast.success(`User role updated to ${role}`)
+      await api.updateUser(selectedUser.username, {
+        username: editFormData.username,
+        role: editFormData.role,
+        is_active: editFormData.is_active,
+      })
+      toast.success("User updated successfully")
+      setEditDialogOpen(false)
+      setSelectedUser(null)
       loadUsers()
     } catch (error: any) {
-      toast.error(error.message || "Failed to update user role")
+      toast.error(error.message || "Failed to update user")
     }
   }
 
@@ -120,6 +138,16 @@ export function UserManagement() {
     } catch (error: any) {
       toast.error(error.message || "Failed to delete user")
     }
+  }
+
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user)
+    setEditFormData({
+      username: user.username,
+      role: (user.role as "admin" | "user") || "user",
+      is_active: user.is_active ?? true,
+    })
+    setEditDialogOpen(true)
   }
 
   if (loading) {
@@ -141,7 +169,7 @@ export function UserManagement() {
             <div>
               <CardTitle>Users</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage users and their roles
+                Manage users, roles, and account status
               </p>
             </div>
             <Drawer open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -155,39 +183,39 @@ export function UserManagement() {
                 <DrawerHeader>
                   <DrawerTitle>Create New User</DrawerTitle>
                   <DrawerDescription>
-                    Create a new user account. The user will be created in both LDAP and MySQL.
+                    Create a new user account. The user will be created in LDAP and synced to the database.
                   </DrawerDescription>
                 </DrawerHeader>
                 <div className="space-y-4 p-4">
-                  <div className="space-y-2">
+                  <div className="grid gap-2">
                     <Label htmlFor="username">Username</Label>
                     <Input
                       id="username"
-                      value={formData.username}
+                      value={createFormData.username}
                       onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
+                        setCreateFormData({ ...createFormData, username: e.target.value })
                       }
                       placeholder="Enter username"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>
                     <Input
                       id="password"
                       type="password"
-                      value={formData.password}
+                      value={createFormData.password}
                       onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
+                        setCreateFormData({ ...createFormData, password: e.target.value })
                       }
                       placeholder="Enter password"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="grid gap-2">
                     <Label htmlFor="role">Role</Label>
                     <Select
-                      value={formData.role}
+                      value={createFormData.role}
                       onValueChange={(value: "admin" | "user") =>
-                        setFormData({ ...formData, role: value })
+                        setCreateFormData({ ...createFormData, role: value })
                       }
                     >
                       <SelectTrigger>
@@ -215,17 +243,18 @@ export function UserManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>Username</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Account Status</TableHead>
+                <TableHead>Name/Email</TableHead>
+                <TableHead>VPN Status</TableHead>
                 <TableHead>Devices</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <p className="text-muted-foreground">No users found</p>
                   </TableCell>
                 </TableRow>
@@ -235,18 +264,36 @@ export function UserManagement() {
                     <TableCell className="font-medium">
                       {user.username}
                     </TableCell>
-                    <TableCell>{user.cn || "-"}</TableCell>
-                    <TableCell>{user.mail || "-"}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {user.device_count} device{user.device_count !== 1 ? "s" : ""}
+                      <Badge variant={user.role === "admin" ? "default" : "outline"}>
+                        {user.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={user.wireguard_enabled ? "default" : "secondary"}
+                        variant={user.is_active ? "default" : "destructive"}
+                        className={user.is_active ? "bg-green-600 hover:bg-green-700" : ""}
                       >
-                        {user.wireguard_enabled ? "Enabled" : "Disabled"}
+                        {user.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-sm">{user.cn || "-"}</span>
+                        <span className="text-xs text-muted-foreground">{user.mail || "-"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={user.wireguard_enabled ? "outline" : "secondary"}
+                        className={user.wireguard_enabled ? "text-blue-600 border-blue-600" : ""}
+                      >
+                        {user.wireguard_enabled ? "VPN Enabled" : "VPN Disabled"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {user.device_count} device{user.device_count !== 1 ? "s" : ""}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -257,22 +304,9 @@ export function UserManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              // Get user detail to check current role
-                              api.getUserDetail(user.username)
-                                .then((detail) => {
-                                  const currentRole = detail.role || "user"
-                                  const newRole = currentRole === "admin" ? "user" : "admin"
-                                  handleUpdateRole(user.username, newRole)
-                                })
-                                .catch((error) => {
-                                  toast.error(error.message || "Failed to get user details")
-                                })
-                            }}
-                          >
+                          <DropdownMenuItem onClick={() => openEditDialog(user)}>
                             <IconEdit className="mr-2 h-4 w-4" />
-                            Toggle Role
+                            Edit User
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
@@ -295,6 +329,78 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
+      {/* Edit User Dialog */}
+      <Drawer open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Edit User: {selectedUser?.username}</DrawerTitle>
+            <DrawerDescription>
+              Update user details. Changing the username will update its linked VPN devices.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="space-y-4 p-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-username">Username</Label>
+              <Input
+                id="edit-username"
+                value={editFormData.username}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, username: e.target.value })
+                }
+                placeholder="Enter new username"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-role">Role</Label>
+              <Select
+                value={editFormData.role}
+                onValueChange={(value: "admin" | "user") =>
+                  setEditFormData({ ...editFormData, role: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Account Status</Label>
+              <Select
+                value={editFormData.is_active ? "true" : "false"}
+                onValueChange={(value) =>
+                  setEditFormData({ ...editFormData, is_active: value === "true" })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Active (Can Login)</SelectItem>
+                  <SelectItem value="false">Inactive (Blocked)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DrawerFooter>
+            <Button onClick={handleEdit}>Save Changes</Button>
+            <DrawerClose asChild>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedUser(null)
+                }}
+              >
+                Cancel
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
       {/* Delete Confirmation Dialog */}
       <Drawer open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DrawerContent>
@@ -302,12 +408,12 @@ export function UserManagement() {
             <DrawerTitle>Delete User</DrawerTitle>
             <DrawerDescription>
               Are you sure you want to delete user <strong>{selectedUser?.username}</strong>?
-              This action cannot be undone. The user will be permanently deleted from both LDAP and MySQL.
+              This action cannot be undone.
             </DrawerDescription>
           </DrawerHeader>
           <DrawerFooter>
             <Button variant="destructive" onClick={handleDelete}>
-              Delete
+              Delete Permanently
             </Button>
             <DrawerClose asChild>
               <Button
