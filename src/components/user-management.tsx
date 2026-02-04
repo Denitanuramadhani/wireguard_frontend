@@ -98,6 +98,11 @@ export function UserManagement() {
         return
       }
 
+      if (/\s/.test(createFormData.username)) {
+        toast.error("Username cannot contain spaces")
+        return
+      }
+
       await api.createUser(createFormData.username, createFormData.password, createFormData.role)
       toast.success("User created successfully")
       setCreateDialogOpen(false)
@@ -112,6 +117,11 @@ export function UserManagement() {
     if (!selectedUser) return
 
     try {
+      if (editFormData.username && /\s/.test(editFormData.username)) {
+        toast.error("Username cannot contain spaces")
+        return
+      }
+
       await api.updateUser(selectedUser.username, {
         username: editFormData.username,
         role: editFormData.role,
@@ -193,9 +203,9 @@ export function UserManagement() {
                       id="username"
                       value={createFormData.username}
                       onChange={(e) =>
-                        setCreateFormData({ ...createFormData, username: e.target.value })
+                        setCreateFormData({ ...createFormData, username: e.target.value.replace(/\s/g, "") })
                       }
-                      placeholder="Enter username"
+                      placeholder="Enter username (no spaces)"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -345,9 +355,9 @@ export function UserManagement() {
                 id="edit-username"
                 value={editFormData.username}
                 onChange={(e) =>
-                  setEditFormData({ ...editFormData, username: e.target.value })
+                  setEditFormData({ ...editFormData, username: e.target.value.replace(/\s/g, "") })
                 }
-                placeholder="Enter new username"
+                placeholder="Enter new username (no spaces)"
               />
             </div>
             <div className="grid gap-2">
