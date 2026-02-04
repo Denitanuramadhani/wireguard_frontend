@@ -11,7 +11,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface Column<T> {
-  accessorKey: keyof T | string
+  accessorKey?: keyof T | string
   header: string
   cell?: (row: T) => React.ReactNode
 }
@@ -43,8 +43,8 @@ export function SimpleTable<T extends Record<string, any>>({
       <Table>
         <TableHeader>
           <TableRow>
-            {columns.map((column) => (
-              <TableHead key={String(column.accessorKey)}>
+            {columns.map((column, idx) => (
+              <TableHead key={column.accessorKey ? String(column.accessorKey) : `col-${idx}`}>
                 {column.header}
               </TableHead>
             ))}
@@ -60,11 +60,13 @@ export function SimpleTable<T extends Record<string, any>>({
           ) : (
             data.map((row, rowIndex) => (
               <TableRow key={rowIndex}>
-                {columns.map((column) => (
-                  <TableCell key={String(column.accessorKey)}>
+                {columns.map((column, colIdx) => (
+                  <TableCell key={column.accessorKey ? String(column.accessorKey) : `cell-${colIdx}`}>
                     {column.cell
                       ? column.cell(row)
-                      : String(row[column.accessorKey as keyof T] ?? "")}
+                      : column.accessorKey
+                        ? String(row[column.accessorKey as keyof T] ?? "")
+                        : null}
                   </TableCell>
                 ))}
               </TableRow>

@@ -319,6 +319,12 @@ class ApiClient {
     });
   }
 
+  async resetUserBandwidth(username: string) {
+    return this.request(`/admin/bandwidth/user/${username}/reset`, {
+      method: "POST",
+    });
+  }
+
   // Peers endpoint
   async getPeers() {
     return this.request('/peers/');

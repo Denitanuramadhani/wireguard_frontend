@@ -20,6 +20,13 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -27,6 +34,7 @@ export default function AdminBandwidthPage() {
   const { user, loading: authLoading, isAdmin } = useAuth()
   const router = useRouter()
   const [bandwidthLimits, setBandwidthLimits] = useState<any[]>([])
+  const [allUsers, setAllUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState("")
   const [limitMB, setLimitMB] = useState("")
@@ -44,8 +52,18 @@ export default function AdminBandwidthPage() {
   useEffect(() => {
     if (user && isAdmin) {
       loadBandwidthLimits()
+      loadAllUsers()
     }
   }, [user, isAdmin])
+
+  const loadAllUsers = async () => {
+    try {
+      const response = await api.getAdminUsers()
+      setAllUsers(response.users || [])
+    } catch (error: any) {
+      console.error("Failed to load users:", error)
+    }
+  }
 
   const loadBandwidthLimits = async () => {
     try {
@@ -78,7 +96,17 @@ export default function AdminBandwidthPage() {
     }
   }
 
-  const columns = [
+  const handleResetUsage = async (username: string) => {
+    try {
+      await api.resetUserBandwidth(username)
+      toast.success(`Bandwidth usage reset for ${username}`)
+      loadBandwidthLimits()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reset bandwidth usage")
+    }
+  }
+
+  const columns: any[] = [
     {
       accessorKey: "ldap_uid",
       header: "Username",
@@ -86,13 +114,37 @@ export default function AdminBandwidthPage() {
     {
       accessorKey: "limit_mb",
       header: "Limit (MB)",
-      cell: (row: any) => `${row.limit_mb || 0} MB`,
+      cell: (row: any) => row.limit_mb ? `${row.limit_mb.toLocaleString()} MB` : "Unlimited",
     },
     {
       accessorKey: "used_mb",
       header: "Used (MB)",
-      cell: (row: any) => `${row.used_mb || 0} MB`,
+      cell: (row: any) => `${row.used_mb.toLocaleString()} MB`,
     },
+    {
+      header: "Actions",
+      cell: (row: any) => (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setUsername(row.ldap_uid)
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          >
+            Edit Limit
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => handleResetUsage(row.ldap_uid)}
+          >
+            Reset Usage
+          </Button>
+        </div>
+      )
+    }
   ]
 
   // Mock chart data for bandwidth usage
@@ -141,34 +193,63 @@ export default function AdminBandwidthPage() {
                 <Card className="mb-6">
                   <CardHeader>
                     <CardTitle>Set Bandwidth Limit</CardTitle>
-                    <CardDescription>Set bandwidth limit for a user</CardDescription>
+                    <CardDescription>Update bandwidth limit for a specific user (MB)</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Limit (MB)"
-                        value={limitMB}
-                        onChange={(e) => setLimitMB(e.target.value)}
-                      />
-                      <Button onClick={handleSetLimit}>Set Limit</Button>
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <div className="flex-1">
+                        <Select value={username} onValueChange={setUsername}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select user..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allUsers.map((u) => (
+                              <SelectItem key={u.username} value={u.username}>
+                                {u.username} {u.cn ? `(${u.cn})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-full md:w-48">
+                        <Input
+                          type="number"
+                          placeholder="Limit in MB"
+                          value={limitMB}
+                          onChange={(e) => setLimitMB(e.target.value)}
+                        />
+                      </div>
+                      <Button onClick={handleSetLimit} className="w-full md:w-auto">
+                        Apply Limit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setUsername("");
+                          setLimitMB("");
+                        }}
+                      >
+                        Clear
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Bandwidth Limits</CardTitle>
-                    <CardDescription>Current bandwidth limits for all users</CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Bandwidth Usage Summary</CardTitle>
+                        <CardDescription>Real-time bandwidth consumption across all user devices</CardDescription>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={loadBandwidthLimits} disabled={loading}>
+                        {loading ? "Refreshing..." : "Refresh Data"}
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <SimpleTable 
-                      data={bandwidthLimits} 
+                    <SimpleTable
+                      data={bandwidthLimits}
                       columns={columns}
                       loading={loading}
                     />
