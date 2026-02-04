@@ -1,5 +1,5 @@
 // API Client for WireGuard Backend
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.denitanurramadhani.my.id') + '/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface ApiResponse<T = any> {
   status: string;
