@@ -92,13 +92,24 @@ export default function DevicesPage() {
     }
   }
 
+  const downloadQR = (base64: string, deviceName: string) => {
+    const link = document.createElement("a")
+    link.href = `data:image/png;base64,${base64}`
+    link.download = `wireguard-${deviceName.replace(/\s+/g, '-').toLowerCase()}-qr.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   async function handleRegenerateQR(deviceId: number) {
+    const device = devices.find(d => (d.device_id || d.id) === deviceId)
+    const name = device?.device_name || "device"
+
     try {
       const response = await api.regenerateQR(deviceId) as any
       if (response.qr_code) {
-        const qrUrl = `data:image/png;base64,${response.qr_code}`
-        window.open(qrUrl, '_blank')
-        toast.success("QR code regenerated successfully")
+        downloadQR(response.qr_code, name)
+        toast.success("QR code regenerated and downloaded")
       } else {
         toast.error("Failed to regenerate QR code: No data received")
       }
@@ -108,12 +119,14 @@ export default function DevicesPage() {
   }
 
   async function handleViewQR(deviceId: number) {
+    const device = devices.find(d => (d.device_id || d.id) === deviceId)
+    const name = device?.device_name || "device"
+
     try {
       const response = await api.getDeviceQR(deviceId) as any
-      // Open QR code in new window or show in modal
       if (response.qr_code) {
-        const qrUrl = `data:image/png;base64,${response.qr_code}`
-        window.open(qrUrl, '_blank')
+        downloadQR(response.qr_code, name)
+        toast.success("QR code downloaded")
       } else if (response.qr_url) {
         window.open(response.qr_url, '_blank')
       } else if (response.expired) {
