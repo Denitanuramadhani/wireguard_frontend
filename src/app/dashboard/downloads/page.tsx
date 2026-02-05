@@ -66,21 +66,27 @@ export default function DownloadsPage() {
 
   const handleDownloadConfig = async (deviceId: number) => {
     try {
-      const deviceNum = devices.find(d => (d.id || d.device_id) === deviceId)
-      if (!deviceNum) {
+      const device = devices.find(d => (d.id || d.device_id) === deviceId)
+      if (!device) {
         toast.error("Device not found")
         return
       }
 
       const response = await api.getDeviceConfig(deviceId) as any
-      if (response.note && response.note.includes("tidak tersedia")) {
-        toast.error(response.note)
-        return
+      if (response.config) {
+        const element = document.createElement("a")
+        const file = new Blob([response.config], { type: 'text/plain' })
+        element.href = URL.createObjectURL(file)
+        element.download = `wg-${device.device_name.replace(/\s+/g, '-').toLowerCase()}.conf`
+        document.body.appendChild(element)
+        element.click()
+        document.body.removeChild(element)
+        toast.success("Configuration downloaded successfully")
+      } else if (response.note || response.message) {
+        toast.error(response.note || response.message || "Config not available")
+      } else {
+        toast.error("Configuration file is not available for this device.")
       }
-
-      // Note: Config file hanya tersedia saat device pertama kali dibuat
-      // Jika tidak ada, user perlu regenerate device
-      toast.info("Config file hanya tersedia saat device pertama kali dibuat. Jika kehilangan config, revoke device ini dan buat device baru.")
     } catch (error: any) {
       toast.error(error.message || "Failed to download config")
     }
