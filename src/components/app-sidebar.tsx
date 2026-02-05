@@ -85,12 +85,6 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
       icon: IconListDetails,
     },
     {
-      title: "Analytics",
-      url: "/dashboard/analytics",
-      icon: IconChartBar,
-    },
-
-    {
       title: "Downloads",
       url: "/dashboard/downloads",
       icon: IconDownload,

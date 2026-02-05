@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -27,9 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
+import { IconChevronLeft, IconChevronRight, IconRefresh } from "@tabler/icons-react"
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area, AreaChart } from "recharts"
 
 interface AuditLog {
   action: string
@@ -39,39 +44,42 @@ interface AuditLog {
   timestamp?: string
 }
 
-interface Device {
-  device_id: number
-  device_name: string
-  vpn_ip: string
-  status: string
-  created_at: string
-  last_seen?: string
-  transfer_rx?: number
-  transfer_tx?: number
-  transfer_total?: number
+interface TrafficData {
+  timestamp: string
+  transfer_rx: number
+  transfer_tx: number
+  transfer_total: number
 }
 
 function MonitoringContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // Get filter params from URL
   const actionFilterParam = searchParams.get('action') || ''
-  const statusFilterParam = searchParams.get('status') || ''
   const actionFilter = actionFilterParam === 'all' ? '' : actionFilterParam
-  const statusFilter = statusFilterParam === 'all' ? '' : statusFilterParam
   const page = parseInt(searchParams.get('page') || '1')
   const limit = 50
   const offset = (page - 1) * limit
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
-  const [devices, setDevices] = useState<Device[]>([])
+  const [trafficData, setTrafficData] = useState<TrafficData[]>([])
   const [loading, setLoading] = useState(true)
+  const [trafficLoading, setTrafficLoading] = useState(true)
   const [totalLogs, setTotalLogs] = useState(0)
-  const [totalDevices, setTotalDevices] = useState(0)
   const [actionFilterValue, setActionFilterValue] = useState(actionFilterParam || 'all')
-  const [statusFilterValue, setStatusFilterValue] = useState(statusFilterParam || 'all')
+
+  const chartConfig = {
+    transfer_rx: {
+      label: "Download",
+      color: "hsl(var(--chart-1))",
+    },
+    transfer_tx: {
+      label: "Upload",
+      color: "hsl(var(--chart-2))",
+    },
+  }
 
   useEffect(() => {
     if (!authLoading) {
@@ -84,13 +92,28 @@ function MonitoringContent() {
   useEffect(() => {
     if (user) {
       loadMonitoringData()
+      loadTrafficData()
     }
-  }, [user, actionFilter, statusFilter, page])
+  }, [user, actionFilter, page])
+
+  const loadTrafficData = async () => {
+    try {
+      setTrafficLoading(true)
+      const response = await api.getTrafficAnalytics(undefined, 24) as any
+      if (response && response.data) {
+        setTrafficData(response.data)
+      }
+    } catch (error: any) {
+      console.error("Failed to load traffic data:", error)
+    } finally {
+      setTrafficLoading(false)
+    }
+  }
 
   const loadMonitoringData = async () => {
     try {
       setLoading(true)
-      
+
       // Load audit logs with filters
       const auditResponse = await api.getUserAuditLogs(
         actionFilter || undefined,
@@ -100,53 +123,25 @@ function MonitoringContent() {
       const logsList = Array.isArray(auditResponse) ? auditResponse : (auditResponse.logs || [])
       setAuditLogs(logsList)
       setTotalLogs(auditResponse.total || auditResponse.count || logsList.length)
-      
-      // Load devices with filters
-      const devicesResponse = await api.getUserDevicesMonitoring(
-        statusFilter || undefined,
-        limit,
-        offset
-      ) as any
-      const devicesList = Array.isArray(devicesResponse) ? devicesResponse : (devicesResponse.devices || [])
-      setDevices(devicesList)
-      setTotalDevices(devicesResponse.total || devicesList.length)
+
     } catch (error: any) {
       toast.error(error.message || "Failed to load monitoring data")
       setAuditLogs([])
-      setDevices([])
     } finally {
       setLoading(false)
     }
-  }
-
-  const updateFilters = () => {
-    const params = new URLSearchParams()
-    if (actionFilterValue) params.set('action', actionFilterValue)
-    if (statusFilterValue) params.set('status', statusFilterValue)
-    if (page > 1) params.set('page', page.toString())
-    router.push(`/dashboard/monitoring?${params.toString()}`)
   }
 
   const handleActionFilterChange = (value: string) => {
     setActionFilterValue(value)
     const params = new URLSearchParams()
     if (value && value !== "all") params.set('action', value)
-    if (statusFilterParam && statusFilterParam !== "all") params.set('status', statusFilterParam)
-    router.push(`/dashboard/monitoring?${params.toString()}`)
-  }
-
-  const handleStatusFilterChange = (value: string) => {
-    setStatusFilterValue(value)
-    const params = new URLSearchParams()
-    if (actionFilterParam && actionFilterParam !== "all") params.set('action', actionFilterParam)
-    if (value && value !== "all") params.set('status', value)
     router.push(`/dashboard/monitoring?${params.toString()}`)
   }
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams()
     if (actionFilterParam && actionFilterParam !== "all") params.set('action', actionFilterParam)
-    if (statusFilterParam && statusFilterParam !== "all") params.set('status', statusFilterParam)
     params.set('page', newPage.toString())
     router.push(`/dashboard/monitoring?${params.toString()}`)
   }
@@ -177,51 +172,13 @@ function MonitoringContent() {
     },
   ]
 
-  const deviceColumns = [
-    {
-      accessorKey: "device_name",
-      header: "Device Name",
-    },
-    {
-      accessorKey: "vpn_ip",
-      header: "VPN IP",
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: (row: any) => {
-        const status = row.status
-        return (
-          <Badge variant={status === "active" ? "default" : "secondary"}>
-            {status}
-          </Badge>
-        )
-      },
-    },
-    {
-      accessorKey: "transfer_total",
-      header: "Total Traffic",
-      cell: (row: any) => {
-        const bytes = row.transfer_total || 0
-        if (bytes >= 1024 * 1024 * 1024) {
-          return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-        } else if (bytes >= 1024 * 1024) {
-          return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-        } else if (bytes >= 1024) {
-          return `${(bytes / 1024).toFixed(2)} KB`
-        }
-        return `${bytes} B`
-      },
-    },
-    {
-      accessorKey: "created_at",
-      header: "Created",
-      cell: (row: any) => {
-        const date = new Date(row.created_at)
-        return date.toLocaleDateString()
-      },
-    },
-  ]
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
 
   if (authLoading || !user) {
     return (
@@ -252,30 +209,80 @@ function MonitoringContent() {
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
               <div className="px-4 lg:px-6">
+
+                {/* Traffic Chart */}
                 <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle>My Devices</CardTitle>
-                    <CardDescription>Your registered devices</CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Traffic Usage</CardTitle>
+                      <CardDescription>Real-time traffic monitor (last 24 hours)</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={loadTrafficData} disabled={trafficLoading}>
+                      <IconRefresh className={`h-4 w-4 ${trafficLoading ? 'animate-spin' : ''}`} />
+                    </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="mb-4 flex gap-2">
-                      <Select value={statusFilterValue} onValueChange={handleStatusFilterChange}>
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Filter by status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Status</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="revoked">Revoked</SelectItem>
-                          <SelectItem value="expired">Expired</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="h-[300px] w-full">
+                      {trafficLoading ? (
+                        <div className="flex h-full items-center justify-center">
+                          <p className="text-sm text-muted-foreground">Loading chart data...</p>
+                        </div>
+                      ) : trafficData.length > 0 ? (
+                        <ChartContainer config={chartConfig}>
+                          <AreaChart
+                            data={trafficData}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorRx" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--color-transfer_rx)" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="var(--color-transfer_rx)" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="colorTx" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--color-transfer_tx)" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="var(--color-transfer_tx)" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                            <XAxis
+                              dataKey="timestamp"
+                              tickFormatter={(value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                            />
+                            <YAxis
+                              tickFormatter={(value) => formatBytes(value)}
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                            />
+                            <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                            <Area
+                              type="monotone"
+                              dataKey="transfer_rx"
+                              stroke="var(--color-transfer_rx)"
+                              fillOpacity={1}
+                              fill="url(#colorRx)"
+                              name="Download"
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="transfer_tx"
+                              stroke="var(--color-transfer_tx)"
+                              fillOpacity={1}
+                              fill="url(#colorTx)"
+                              name="Upload"
+                            />
+                          </AreaChart>
+                        </ChartContainer>
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center space-y-2 border-2 border-dashed rounded-lg">
+                          <p className="text-sm text-muted-foreground">No traffic data recorded yet.</p>
+                          <p className="text-xs text-muted-foreground">Data is collected every minute during active usage.</p>
+                        </div>
+                      )}
                     </div>
-                    <SimpleTable 
-                      data={devices} 
-                      columns={deviceColumns}
-                      loading={loading}
-                    />
                   </CardContent>
                 </Card>
 
@@ -299,8 +306,8 @@ function MonitoringContent() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <SimpleTable 
-                      data={auditLogs} 
+                    <SimpleTable
+                      data={auditLogs}
                       columns={auditColumns}
                       loading={loading}
                     />
