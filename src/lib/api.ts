@@ -134,7 +134,7 @@ class ApiClient {
   }
 
   async regenerateQR(deviceId: number) {
-    return this.request(`/devices/${deviceId}/regenerate-qr`, {
+    return this.request(`/devices/${deviceId}/qr/regenerate`, {
       method: 'POST',
     });
   }

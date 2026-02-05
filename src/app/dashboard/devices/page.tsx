@@ -64,12 +64,12 @@ export default function DevicesPage() {
       toast.error("Please enter a device name")
       return
     }
-    
+
     try {
       setAdding(true)
       await api.addDevice(deviceName.trim())
       toast.success("Device added successfully")
-    setDeviceName("")
+      setDeviceName("")
       loadDevices()
     } catch (error: any) {
       toast.error(error.message || "Failed to add device")
@@ -89,7 +89,22 @@ export default function DevicesPage() {
       loadDevices()
     } catch (error: any) {
       toast.error(error.message || "Failed to revoke device")
+    }
   }
+
+  async function handleRegenerateQR(deviceId: number) {
+    try {
+      const response = await api.regenerateQR(deviceId) as any
+      if (response.qr_code) {
+        const qrUrl = `data:image/png;base64,${response.qr_code}`
+        window.open(qrUrl, '_blank')
+        toast.success("QR code regenerated successfully")
+      } else {
+        toast.error("Failed to regenerate QR code: No data received")
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to regenerate QR code")
+    }
   }
 
   async function handleViewQR(deviceId: number) {
@@ -101,12 +116,18 @@ export default function DevicesPage() {
         window.open(qrUrl, '_blank')
       } else if (response.qr_url) {
         window.open(response.qr_url, '_blank')
+      } else if (response.expired) {
+        if (confirm("QR code has expired. Would you like to regenerate it?")) {
+          handleRegenerateQR(deviceId)
+        }
       } else {
         toast.info("QR code data not available. Try regenerating the QR code.")
       }
     } catch (error: any) {
       if (error.message?.includes('expired') || error.message?.includes('regenerate')) {
-        toast.error(error.message || "QR code expired. Please regenerate it.")
+        if (confirm("QR code is not available or expired. Regenerate now?")) {
+          handleRegenerateQR(deviceId)
+        }
       } else {
         toast.error(error.message || "Failed to load QR code")
       }
@@ -181,13 +202,23 @@ export default function DevicesPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  title="View QR Code"
                   onClick={() => handleViewQR(row.id)}
                 >
                   <IconQrcode className="h-4 w-4" />
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
+                  title="Regenerate QR Code"
+                  onClick={() => handleRegenerateQR(row.id)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>
+                </Button>
+                <Button
+                  size="sm"
                   variant="destructive"
+                  title="Revoke Device"
                   onClick={() => handleRevokeDevice(row.id)}
                 >
                   <IconTrash className="h-4 w-4" />
@@ -243,8 +274,8 @@ export default function DevicesPage() {
               </Card>
 
               <div className="px-4 lg:px-6">
-                <SimpleTable 
-                  data={tableData} 
+                <SimpleTable
+                  data={tableData}
                   columns={columns}
                   loading={loading}
                 />
