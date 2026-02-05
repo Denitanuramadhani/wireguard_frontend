@@ -20,7 +20,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
-import { IconDownload, IconQrcode, IconFileText } from "@tabler/icons-react"
+import { IconDownload, IconQrcode, IconFileText, IconCopy, IconCheck } from "@tabler/icons-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface Device {
   id: number
@@ -35,6 +42,10 @@ export default function DownloadsPage() {
   const router = useRouter()
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedConfig, setSelectedConfig] = useState<{ name: string, content: string } | null>(null)
+  const [selectedQR, setSelectedQR] = useState<{ name: string, content: string } | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!authLoading) {
@@ -64,7 +75,7 @@ export default function DownloadsPage() {
     }
   }
 
-  const handleDownloadConfig = async (deviceId: number) => {
+  const handleViewConfig = async (deviceId: number) => {
     try {
       const device = devices.find(d => (d.id || d.device_id) === deviceId)
       if (!device) {
@@ -74,42 +85,69 @@ export default function DownloadsPage() {
 
       const response = await api.getDeviceConfig(deviceId) as any
       if (response.config) {
-        const element = document.createElement("a")
-        const file = new Blob([response.config], { type: 'text/plain' })
-        element.href = URL.createObjectURL(file)
-        element.download = `wg-${device.device_name.replace(/\s+/g, '-').toLowerCase()}.conf`
-        document.body.appendChild(element)
-        element.click()
-        document.body.removeChild(element)
-        toast.success("Configuration downloaded successfully")
+        setSelectedConfig({
+          name: device.device_name,
+          content: response.config
+        })
+        setSelectedQR(null)
+        setIsPreviewOpen(true)
       } else if (response.note || response.message) {
         toast.error(response.note || response.message || "Config not available")
       } else {
         toast.error("Configuration file is not available for this device.")
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to download config")
+      toast.error(error.message || "Failed to load config")
     }
   }
 
-  const handleDownloadQR = async (deviceId: number) => {
+  const handleDownloadConfig = (name: string, content: string) => {
+    const element = document.createElement("a")
+    const file = new Blob([content], { type: 'text/plain' })
+    element.href = URL.createObjectURL(file)
+    element.download = `wg-${name.replace(/\s+/g, '-').toLowerCase()}.conf`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+    toast.success("Configuration downloaded successfully")
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    toast.success("Config copied to clipboard")
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleViewQR = async (deviceId: number) => {
     try {
+      const device = devices.find(d => (d.id || d.device_id) === deviceId)
+      if (!device) return
+
       const response = await api.getDeviceQR(deviceId) as any
       if (response.qr_code) {
-        const qrUrl = `data:image/png;base64,${response.qr_code}`
-        const a = document.createElement('a')
-        a.href = qrUrl
-        a.download = `device-${deviceId}-qr.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        toast.success("QR code downloaded")
+        setSelectedQR({
+          name: device.device_name,
+          content: response.qr_code
+        })
+        setSelectedConfig(null)
+        setIsPreviewOpen(true)
       } else {
         toast.error("QR code not available")
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to download QR code")
+      toast.error(error.message || "Failed to load QR code")
     }
+  }
+
+  const handleDownloadQR = (name: string, base64: string) => {
+    const a = document.createElement('a')
+    a.href = `data:image/png;base64,${base64}`
+    a.download = `wg-${name.replace(/\s+/g, '-').toLowerCase()}-qr.png`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    toast.success("QR code downloaded")
   }
 
   if (authLoading || !user) {
@@ -175,7 +213,7 @@ export default function DownloadsPage() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleDownloadConfig(deviceId)}
+                                    onClick={() => handleViewConfig(deviceId)}
                                     className="flex-1"
                                   >
                                     <IconFileText className="h-4 w-4 mr-2" />
@@ -184,7 +222,7 @@ export default function DownloadsPage() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleDownloadQR(deviceId)}
+                                    onClick={() => handleViewQR(deviceId)}
                                     className="flex-1"
                                   >
                                     <IconQrcode className="h-4 w-4 mr-2" />
@@ -204,6 +242,69 @@ export default function DownloadsPage() {
           </div>
         </div>
       </SidebarInset>
+
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedConfig ? `WireGuard Config: ${selectedConfig.name}` : `QR Code: ${selectedQR?.name}`}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedConfig
+                ? "Copy or download your configuration file below."
+                : "Scan this QR code with your WireGuard app."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto py-4">
+            {selectedConfig && (
+              <div className="relative">
+                <pre className="p-4 bg-muted rounded-md font-mono text-xs overflow-x-auto border">
+                  {selectedConfig.content}
+                </pre>
+                <div className="absolute top-2 right-2 flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground"
+                    onClick={() => copyToClipboard(selectedConfig.content)}
+                  >
+                    {copied ? <IconCheck className="h-4 w-4 text-green-500" /> : <IconCopy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {selectedQR && (
+              <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg border">
+                <img
+                  src={`data:image/png;base64,${selectedQR.content}`}
+                  alt="WireGuard QR Code"
+                  className="max-w-xs h-auto shadow-sm border border-gray-100 p-2"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => setIsPreviewOpen(false)}>
+              Close
+            </Button>
+            {selectedConfig && (
+              <Button onClick={() => handleDownloadConfig(selectedConfig.name, selectedConfig.content)}>
+                <IconDownload className="h-4 w-4 mr-2" />
+                Download .conf
+              </Button>
+            )}
+            {selectedQR && (
+              <Button onClick={() => handleDownloadQR(selectedQR.name, selectedQR.content)}>
+                <IconDownload className="h-4 w-4 mr-2" />
+                Download PNG
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 }
