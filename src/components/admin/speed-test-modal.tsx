@@ -17,8 +17,8 @@ export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenCh
     const [phase, setPhase] = useState<'idle' | 'download' | 'upload' | 'complete'>('idle')
     const [progress, setProgress] = useState(0)
 
-    const requestRef = useRef<number>()
-    const startTimeRef = useRef<number>()
+    const requestRef = useRef<any>(null)
+    const startTimeRef = useRef<any>(null)
 
     const runTest = () => {
         setPhase('download')
