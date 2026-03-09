@@ -282,7 +282,35 @@ class ApiClient {
   }
 
   async getSystemStats() {
-    return this.request('/admin/monitoring/stats');
+    return this.request<{
+      status: string;
+      statistics: {
+        devices: {
+          total: number;
+          active: number;
+          revoked: number;
+          has_recent_handshake: number;
+        };
+        users: {
+          total: number;
+          total_with_devices: number;
+        };
+        traffic: {
+          total_rx: number;
+          total_tx: number;
+          total_bytes: number;
+        };
+        health: {
+          status: string;
+          database: string;
+        };
+        alerts: {
+          total_recent: number;
+          critical: number;
+          high: number;
+        };
+      };
+    }>('/admin/monitoring/stats');
   }
 
   async getAlerts(limit: number = 50, severity?: string) {

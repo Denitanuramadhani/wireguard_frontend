@@ -15,19 +15,24 @@ import { DashboardCharts } from "@/components/admin/dashboard-charts"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 
+import { api } from "@/lib/api"
+import { formatBytes } from "@/lib/utils"
+
 export default function AdminDashboardPage() {
   const { user, loading, isAdmin } = useAuth()
   const router = useRouter()
 
-  // Example stats / in a real app, this would be fetched from API
-  const [stats] = useState({
-    totalUsers: 142,
-    totalPeers: 85,
-    activePeers: 62,
-    totalTraffic: "1.4 TB",
-    systemStatus: "Healthy",
-    totalDevices: 156,
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalPeers: 0,
+    activePeers: 0,
+    totalTraffic: "0 B",
+    systemStatus: "Checking...",
+    totalDevices: 0,
+    alertCount: 0,
   })
+  const [trafficData, setTrafficData] = useState<any[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
     if (!loading) {
@@ -35,9 +40,47 @@ export default function AdminDashboardPage() {
         router.push('/login')
       } else if (!isAdmin) {
         router.push('/dashboard')
+      } else {
+        fetchAllData()
       }
     }
   }, [user, loading, isAdmin, router])
+
+  const fetchAllData = async () => {
+    try {
+      setDataLoading(true)
+      const [statsResponse, trafficResponse] = await Promise.all([
+        api.getSystemStats(),
+        api.getTrafficAnalytics(undefined, 24)
+      ])
+
+      if (statsResponse && statsResponse.status === 'ok' && statsResponse.statistics) {
+        const s = statsResponse.statistics
+        setStats({
+          totalUsers: s.users.total,
+          totalPeers: s.devices.total,
+          activePeers: s.devices.has_recent_handshake,
+          totalTraffic: formatBytes(s.traffic.total_bytes),
+          systemStatus: s.health.status === 'ok' ? 'Healthy' : 'Issues Detected',
+          totalDevices: s.devices.total,
+          alertCount: s.alerts.total_recent,
+        })
+      }
+
+      if (trafficResponse) {
+        const analytics = Array.isArray(trafficResponse) ? trafficResponse : ((trafficResponse as any).data || [])
+        const chartData = analytics.map((item: any) => ({
+          month: new Date(item.timestamp || item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          traffic: (item.transfer_total || item.traffic || item.bytes || 0) / (1024 * 1024), // MB
+        }))
+        setTrafficData(chartData)
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error)
+    } finally {
+      setDataLoading(false)
+    }
+  }
 
   if (loading || !user || !isAdmin) {
     return (
@@ -67,7 +110,7 @@ export default function AdminDashboardPage() {
 
             {/* Header and Welcome */}
             <div className="flex flex-col gap-2">
-              <WelcomeHeader />
+              <WelcomeHeader username={user.username} alertCount={stats.alertCount} />
 
               {/* Breadcrumbs Navigation */}
               <div className="flex items-center gap-2 px-4 text-sm text-muted-foreground lg:px-6">
@@ -80,10 +123,10 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Metric Cards Section (3x2 Grid) */}
-            <DashboardStats stats={stats} />
+            <DashboardStats stats={stats} loading={dataLoading} />
 
             {/* Analytics Section (Two Columns) */}
-            <DashboardCharts stats={stats} />
+            <DashboardCharts stats={stats} trafficData={trafficData} />
 
           </div>
         </div>

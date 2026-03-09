@@ -1,14 +1,14 @@
 "use client"
 
-import { IconDeviceMobile, IconUsers, IconShield, IconActivity } from "@tabler/icons-react"
+import { IconDeviceMobile, IconUsers, IconActivity } from "@tabler/icons-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Card,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { formatBytes } from "@/lib/utils"
 
 interface Stats {
   totalDevices: number
@@ -65,11 +65,11 @@ export function SectionCards({
       color: "indigo"
     },
     {
-      title: "System Status",
-      value: "Healthy",
-      description: "All systems operational",
-      icon: IconShield,
-      color: "emerald"
+      title: "Total Traffic",
+      value: formatBytes(stats.totalTraffic),
+      description: "Data sent across all tunnels",
+      icon: IconActivity,
+      color: "orange"
     },
   ] : [
     {
@@ -85,6 +85,13 @@ export function SectionCards({
       description: "Currently connected",
       icon: IconActivity,
       color: "emerald"
+    },
+    {
+      title: "Total Traffic",
+      value: formatBytes(stats.totalTraffic),
+      description: "Your total data usage",
+      icon: IconActivity,
+      color: "orange"
     },
   ]
 
@@ -113,7 +120,7 @@ export function SectionCards({
                 <span className="h-1.5 w-1.5 rounded-full bg-slate-200 dark:bg-zinc-800 group-hover:bg-primary/40 transition-colors" />
               </CardDescription>
               <CardTitle className="mt-2 text-2xl font-bold tracking-tight tabular-nums group-hover:text-primary transition-colors">
-                {typeof card.value === 'number' ? card.value.toLocaleString() : card.value}
+                {card.value}
               </CardTitle>
             </CardHeader>
             <div className="px-6 pb-4">
