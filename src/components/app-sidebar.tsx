@@ -52,7 +52,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
     },
     {
       title: "User Management",
-      url: "/admin/dashboard",
+      url: "/admin/users",
       icon: IconUsers,
     },
     {
@@ -69,6 +69,11 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
       title: "Bandwidth",
       url: "/admin/bandwidth",
       icon: IconFileAnalytics,
+    },
+    {
+      title: "Peers Management",
+      url: "/admin/peers",
+      icon: IconFolder,
     },
   ]
 

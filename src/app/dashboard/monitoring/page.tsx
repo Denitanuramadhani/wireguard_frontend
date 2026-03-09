@@ -33,8 +33,9 @@ import {
 } from "@/components/ui/chart"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
-import { IconChevronLeft, IconChevronRight, IconRefresh } from "@tabler/icons-react"
+import { IconChevronLeft, IconChevronRight, IconRefresh, IconActivity } from "@tabler/icons-react"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area, AreaChart } from "recharts"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface AuditLog {
   action: string
@@ -183,9 +184,12 @@ function MonitoringContent() {
   if (authLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+        <div className="text-center group">
+          <div className="relative h-12 w-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-zinc-800" />
+            <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <p className="mt-6 text-sm font-bold tracking-widest text-muted-foreground uppercase animate-pulse">Accessing Logs...</p>
         </div>
       </div>
     )
@@ -205,33 +209,54 @@ function MonitoringContent() {
       <AppSidebar variant="inset" isAdmin={false} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex flex-1 flex-col"
+        >
           <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            <div className="flex flex-col gap-6 py-8 md:gap-8 md:py-10">
+              <div className="px-4 lg:px-6 mb-2">
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-zinc-100 md:text-4xl">
+                  Monitoring
+                </h1>
+                <p className="text-muted-foreground mt-2 text-md">
+                  Review your network traffic and security audit logs.
+                </p>
+              </div>
+
               <div className="px-4 lg:px-6">
 
                 {/* Traffic Chart */}
-                <Card className="mb-6">
-                  <CardHeader className="flex flex-row items-center justify-between">
+                <Card className="mb-8 border border-slate-200/60 bg-white shadow-sm dark:border-zinc-800/60 dark:bg-zinc-950 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5">
+                  <CardHeader className="flex flex-row items-center justify-between pb-6">
                     <div>
-                      <CardTitle>Traffic Usage</CardTitle>
+                      <CardTitle className="text-xl font-bold">Traffic Usage</CardTitle>
                       <CardDescription>Real-time traffic monitor (last 24 hours)</CardDescription>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={loadTrafficData} disabled={trafficLoading}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={loadTrafficData}
+                      disabled={trafficLoading}
+                      className="h-10 w-10 rounded-xl hover:bg-primary/5 hover:text-primary transition-all active:scale-95"
+                    >
                       <IconRefresh className={`h-4 w-4 ${trafficLoading ? 'animate-spin' : ''}`} />
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[300px] w-full">
+                    <div className="min-h-[400px] w-full overflow-visible pb-14 px-2">
                       {trafficLoading ? (
-                        <div className="flex h-full items-center justify-center">
-                          <p className="text-sm text-muted-foreground">Loading chart data...</p>
+                        <div className="flex h-full flex-col items-center justify-center gap-4">
+                          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                          <p className="text-sm font-medium text-muted-foreground">Gathering network metrics...</p>
                         </div>
                       ) : trafficData.length > 0 ? (
-                        <ChartContainer config={chartConfig}>
+                        <ChartContainer config={chartConfig} className="overflow-visible">
                           <AreaChart
                             data={trafficData}
-                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            margin={{ top: 20, right: 35, left: 10, bottom: 45 }}
                           >
                             <defs>
                               <linearGradient id="colorRx" x1="0" y1="0" x2="0" y2="1">
@@ -277,44 +302,49 @@ function MonitoringContent() {
                           </AreaChart>
                         </ChartContainer>
                       ) : (
-                        <div className="flex h-full flex-col items-center justify-center space-y-2 border-2 border-dashed rounded-lg">
-                          <p className="text-sm text-muted-foreground">No traffic data recorded yet.</p>
-                          <p className="text-xs text-muted-foreground">Data is collected every minute during active usage.</p>
+                        <div className="flex h-full flex-col items-center justify-center space-y-4 border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl bg-slate-50/50 dark:bg-zinc-900/50">
+                          <IconActivity className="h-12 w-12 text-slate-300 dark:text-zinc-700" />
+                          <div className="text-center">
+                            <p className="text-sm font-bold text-slate-600 dark:text-zinc-400">No traffic data recorded yet.</p>
+                            <p className="text-xs text-muted-foreground mt-1">Data is collected every minute during active usage.</p>
+                          </div>
                         </div>
                       )}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Audit Logs</CardTitle>
-                    <CardDescription>Your activity and changes</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4 flex gap-2">
+                <Card className="mt-12 border border-slate-200/60 bg-white shadow-sm dark:border-zinc-800/60 dark:bg-zinc-950">
+                  <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6">
+                    <div>
+                      <CardTitle className="text-xl font-bold">Audit Logs</CardTitle>
+                      <CardDescription>Your personal activity and changes</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
                       <Select value={actionFilterValue} onValueChange={handleActionFilterChange}>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-[180px] h-10 border-slate-200/60 bg-slate-50/50 dark:bg-zinc-900/50 dark:border-zinc-800 rounded-xl font-medium">
                           <SelectValue placeholder="Filter by action" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Actions</SelectItem>
-                          <SelectItem value="device_added">Device Added</SelectItem>
-                          <SelectItem value="device_revoked">Device Revoked</SelectItem>
-                          <SelectItem value="login_success">Login Success</SelectItem>
-                          <SelectItem value="login_failed">Login Failed</SelectItem>
+                        <SelectContent className="rounded-xl border-slate-200/60 dark:border-zinc-800 overflow-hidden">
+                          <SelectItem value="all" className="focus:bg-primary/5 focus:text-primary transition-colors">All Actions</SelectItem>
+                          <SelectItem value="device_added" className="focus:bg-primary/5 focus:text-primary transition-colors">Device Added</SelectItem>
+                          <SelectItem value="device_revoked" className="focus:bg-primary/5 focus:text-primary transition-colors">Device Revoked</SelectItem>
+                          <SelectItem value="login_success" className="focus:bg-primary/5 focus:text-primary transition-colors">Login Success</SelectItem>
+                          <SelectItem value="login_failed" className="focus:bg-primary/5 focus:text-primary transition-colors">Login Failed</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                  </CardHeader>
+                  <CardContent>
                     <SimpleTable
                       data={auditLogs}
                       columns={auditColumns}
                       loading={loading}
                     />
                     {totalPages > 1 && (
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="text-sm text-muted-foreground">
-                          Page {page} of {totalPages} ({totalLogs} total)
+                      <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-100 dark:border-zinc-900">
+                        <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                          Page <span className="text-foreground">{page}</span> of <span className="text-foreground">{totalPages}</span> ({totalLogs} total)
                         </div>
                         <div className="flex gap-2">
                           <Button
@@ -322,18 +352,20 @@ function MonitoringContent() {
                             size="sm"
                             onClick={() => handlePageChange(page - 1)}
                             disabled={page <= 1}
+                            className="h-9 rounded-xl border-slate-200/60 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all active:scale-95"
                           >
-                            <IconChevronLeft className="h-4 w-4" />
-                            Previous
+                            <IconChevronLeft className="h-4 w-4 mr-1" />
+                            Prev
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handlePageChange(page + 1)}
                             disabled={page >= totalPages}
+                            className="h-9 rounded-xl border-slate-200/60 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all active:scale-95"
                           >
                             Next
-                            <IconChevronRight className="h-4 w-4" />
+                            <IconChevronRight className="h-4 w-4 ml-1" />
                           </Button>
                         </div>
                       </div>
@@ -343,7 +375,7 @@ function MonitoringContent() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </SidebarInset>
     </SidebarProvider>
   )
@@ -353,9 +385,12 @@ export default function MonitoringPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+        <div className="text-center group">
+          <div className="relative h-12 w-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-zinc-800" />
+            <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <p className="mt-6 text-sm font-bold tracking-widest text-muted-foreground uppercase animate-pulse">Initializing Monitor...</p>
         </div>
       </div>
     }>

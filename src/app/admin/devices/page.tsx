@@ -27,14 +27,17 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { IconTrash } from "@tabler/icons-react"
+import { Activity } from "lucide-react"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
+
+import { DeviceTable } from "@/components/admin/device-table"
 
 function AdminDevicesContent() {
   const { user, loading: authLoading, isAdmin } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   const statusFilterParam = searchParams.get('status') || ''
   const statusFilter = statusFilterParam === 'all' ? '' : statusFilterParam
   const page = parseInt(searchParams.get('page') || '1')
@@ -156,7 +159,7 @@ function AdminDevicesContent() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -175,38 +178,42 @@ function AdminDevicesContent() {
       <AppSidebar variant="inset" isAdmin={true} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <div className="px-4 lg:px-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>All Devices</CardTitle>
-                    <CardDescription>Manage all VPN devices in the system</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <Select value={statusFilterParam || "all"} onValueChange={handleStatusFilterChange}>
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Filter by status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Status</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="revoked">Revoked</SelectItem>
-                          <SelectItem value="expired">Expired</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <SimpleTable 
-                      data={devices} 
-                      columns={columns}
-                      loading={loading}
-                    />
-                  </CardContent>
-                </Card>
+        <div className="flex flex-1 flex-col pb-10">
+          <div className="px-4 lg:px-6 pt-8">
+            {/* Header */}
+            <div className="relative mb-8">
+              <div className="flex flex-col gap-1">
+                <h1 className="text-4xl font-extrabold tracking-tight text-foreground/90">
+                  Network Devices
+                </h1>
+                <p className="text-muted-foreground text-lg">
+                  Real-time status and hardware management for all connected nodes.
+                </p>
               </div>
+              <div className="absolute -bottom-4 left-0 w-32 h-1.5 bg-primary/30 rounded-full" />
             </div>
+
+            {/* Toolbar Filter */}
+            <div className="flex items-center gap-3 mb-6">
+              <Select value={statusFilterParam || "all"} onValueChange={handleStatusFilterChange}>
+                <SelectTrigger className="w-[180px] h-10 border-muted-foreground/20 bg-background/50 backdrop-blur-sm">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="revoked">Revoked</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Table */}
+            <DeviceTable
+              devices={devices}
+              loading={loading}
+              onRevoke={handleRevokeDevice}
+            />
           </div>
         </div>
       </SidebarInset>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -9,11 +9,25 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { UserManagement } from "@/components/user-management"
+import { WelcomeHeader } from "@/components/admin/welcome-header"
+import { DashboardStats } from "@/components/admin/dashboard-stats"
+import { DashboardCharts } from "@/components/admin/dashboard-charts"
+import Link from "next/link"
+import { ChevronRight } from "lucide-react"
 
 export default function AdminDashboardPage() {
   const { user, loading, isAdmin } = useAuth()
   const router = useRouter()
+
+  // Example stats / in a real app, this would be fetched from API
+  const [stats] = useState({
+    totalUsers: 142,
+    totalPeers: 85,
+    activePeers: 62,
+    totalTraffic: "1.4 TB",
+    systemStatus: "Healthy",
+    totalDevices: 156,
+  })
 
   useEffect(() => {
     if (!loading) {
@@ -29,7 +43,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -48,19 +62,29 @@ export default function AdminDashboardPage() {
       <AppSidebar variant="inset" isAdmin={true} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <div className="px-4 lg:px-6">
-                <div className="mb-6">
-                  <h1 className="text-3xl font-bold">User Management</h1>
-                  <p className="text-muted-foreground mt-2">
-                    Manage users and their roles
-                  </p>
-                </div>
-                <UserManagement />
+        <div className="flex flex-1 flex-col pb-10">
+          <div className="flex flex-col gap-6 pt-6">
+
+            {/* Header and Welcome */}
+            <div className="flex flex-col gap-2">
+              <WelcomeHeader />
+
+              {/* Breadcrumbs Navigation */}
+              <div className="flex items-center gap-2 px-4 text-sm text-muted-foreground lg:px-6">
+                <Link href="/admin/dashboard" className="hover:text-primary transition-colors">
+                  Dashboard
+                </Link>
+                <ChevronRight className="h-4 w-4" />
+                <span className="font-semibold text-primary">Overview</span>
               </div>
             </div>
+
+            {/* Metric Cards Section (3x2 Grid) */}
+            <DashboardStats stats={stats} />
+
+            {/* Analytics Section (Two Columns) */}
+            <DashboardCharts stats={stats} />
+
           </div>
         </div>
       </SidebarInset>

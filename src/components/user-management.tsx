@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -38,8 +38,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
-import { IconPlus, IconDots, IconTrash, IconEdit } from "@tabler/icons-react"
+import {
+  Plus,
+  MoreVertical,
+  Trash2,
+  Edit3,
+  Search,
+  Filter,
+  UserPlus,
+  Shield,
+  ShieldAlert,
+  Smartphone
+} from "lucide-react"
 
 interface User {
   username: string
@@ -56,6 +68,7 @@ interface User {
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -98,11 +111,6 @@ export function UserManagement() {
         return
       }
 
-      if (/\s/.test(createFormData.username)) {
-        toast.error("Username cannot contain spaces")
-        return
-      }
-
       await api.createUser(createFormData.username, createFormData.password, createFormData.role)
       toast.success("User created successfully")
       setCreateDialogOpen(false)
@@ -115,13 +123,7 @@ export function UserManagement() {
 
   const handleEdit = async () => {
     if (!selectedUser) return
-
     try {
-      if (editFormData.username && /\s/.test(editFormData.username)) {
-        toast.error("Username cannot contain spaces")
-        return
-      }
-
       await api.updateUser(selectedUser.username, {
         username: editFormData.username,
         role: editFormData.role,
@@ -138,7 +140,6 @@ export function UserManagement() {
 
   const handleDelete = async () => {
     if (!selectedUser) return
-
     try {
       await api.deleteUser(selectedUser.username)
       toast.success("User deleted successfully")
@@ -160,182 +161,213 @@ export function UserManagement() {
     setEditDialogOpen(true)
   }
 
+  const filteredUsers = users.filter(user =>
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (user.cn && user.cn.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading users...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground font-medium">Loading premium assets...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Users</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage users, roles, and account status
-              </p>
-            </div>
-            <Drawer open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <DrawerTrigger asChild>
-                <Button>
-                  <IconPlus className="mr-2 h-4 w-4" />
-                  Create User
-                </Button>
-              </DrawerTrigger>
-              <DrawerContent>
-                <DrawerHeader>
-                  <DrawerTitle>Create New User</DrawerTitle>
-                  <DrawerDescription>
-                    Create a new user account. The user will be created in LDAP and synced to the database.
-                  </DrawerDescription>
-                </DrawerHeader>
-                <div className="space-y-4 p-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      value={createFormData.username}
-                      onChange={(e) =>
-                        setCreateFormData({ ...createFormData, username: e.target.value.replace(/\s/g, "") })
-                      }
-                      placeholder="Enter username (no spaces)"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={createFormData.password}
-                      onChange={(e) =>
-                        setCreateFormData({ ...createFormData, password: e.target.value })
-                      }
-                      placeholder="Enter password"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select
-                      value={createFormData.role}
-                      onValueChange={(value: "admin" | "user") =>
-                        setCreateFormData({ ...createFormData, role: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DrawerFooter>
-                  <Button onClick={handleCreate}>Create User</Button>
-                  <DrawerClose asChild>
-                    <Button variant="outline">Cancel</Button>
-                  </DrawerClose>
-                </DrawerFooter>
-              </DrawerContent>
-            </Drawer>
+    <div className="space-y-6">
+      {/* Search and Actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
+        <div className="flex flex-1 items-center gap-2 max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search users..."
+              className="pl-10 h-10 bg-background shadow-sm border-muted-foreground/20"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Account Status</TableHead>
-                <TableHead>Name/Email</TableHead>
-                <TableHead>VPN Status</TableHead>
-                <TableHead>Devices</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length === 0 ? (
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0">
+            <Filter className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Drawer open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DrawerTrigger asChild>
+            <Button className="h-10 bg-primary hover:bg-primary/90 shadow-sm gap-2">
+              <UserPlus className="h-4 w-4" />
+              Add New User
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Register New Account</DrawerTitle>
+              <DrawerDescription>
+                Complete the details below to create a new user profile.
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="space-y-4 p-6">
+              <div className="grid gap-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={createFormData.username}
+                  onChange={(e) => setCreateFormData({ ...createFormData, username: e.target.value.replace(/\s/g, "") })}
+                  placeholder="e.g. jdoe"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Initial Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={createFormData.password}
+                  onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="role">Access Level</Label>
+                <Select
+                  value={createFormData.role}
+                  onValueChange={(value: "admin" | "user") => setCreateFormData({ ...createFormData, role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">Standard User</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DrawerFooter className="px-6 pb-10">
+              <Button onClick={handleCreate} className="w-full">Initialize Account</Button>
+              <DrawerClose asChild>
+                <Button variant="outline" className="w-full">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      </div>
+
+      {/* Main Data Table */}
+      <Card className="border-muted-foreground/10 shadow-lg overflow-hidden rounded-xl">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/30">
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <p className="text-muted-foreground">No users found</p>
-                  </TableCell>
+                  <TableHead className="font-semibold px-6 py-4">Username</TableHead>
+                  <TableHead className="font-semibold">Role</TableHead>
+                  <TableHead className="font-semibold">Account Status</TableHead>
+                  <TableHead className="font-semibold">VPN Status</TableHead>
+                  <TableHead className="font-semibold">Devices</TableHead>
+                  <TableHead className="text-right px-6">Actions</TableHead>
                 </TableRow>
-              ) : (
-                users.map((user) => (
-                  <TableRow key={user.username}>
-                    <TableCell className="font-medium">
-                      {user.username}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.role === "admin" ? "default" : "outline"}>
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={user.is_active ? "default" : "destructive"}
-                        className={user.is_active ? "bg-green-600 hover:bg-green-700" : ""}
-                      >
-                        {user.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm">{user.cn || "-"}</span>
-                        <span className="text-xs text-muted-foreground">{user.mail || "-"}</span>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-20">
+                      <div className="flex flex-col items-center gap-2">
+                        <UserPlus className="h-10 w-10 text-muted-foreground/40" />
+                        <p className="text-muted-foreground font-medium">No users found matching your search</p>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={user.wireguard_enabled ? "outline" : "secondary"}
-                        className={user.wireguard_enabled ? "text-blue-600 border-blue-600" : ""}
-                      >
-                        {user.wireguard_enabled ? "VPN Enabled" : "VPN Disabled"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {user.device_count} device{user.device_count !== 1 ? "s" : ""}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <IconDots className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(user)}>
-                            <IconEdit className="mr-2 h-4 w-4" />
-                            Edit User
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedUser(user)
-                              setDeleteDialogOpen(true)
-                            }}
-                            className="text-destructive"
-                          >
-                            <IconTrash className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.username} className="group/row hover:bg-muted/30 transition-all duration-300 ease-in-out border-b border-muted-foreground/5 last:border-0 hover:shadow-2xl hover:shadow-primary/5">
+                      <TableCell className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 border border-muted-foreground/10 transition-transform duration-300 group-hover/row:scale-110">
+                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
+                            <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span className="font-bold leading-none transition-colors duration-300 group-hover/row:text-primary tracking-tight">{user.username}</span>
+                            <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 mt-1">{user.mail || user.cn || "Active Member"}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === "admin" ? "default" : "secondary"} className={
+                          user.role === "admin"
+                            ? "bg-blue-500/10 text-blue-600 border-blue-500/20 group-hover/row:bg-blue-500/20 transition-all"
+                            : "bg-slate-500/10 text-slate-600 border-slate-500/20 group-hover/row:bg-slate-500/20 transition-all"
+                        }>
+                          {user.role === "admin" ? (
+                            <Shield className="mr-1 h-3 w-3" />
+                          ) : (
+                            <ShieldAlert className="mr-1 h-3 w-3" />
+                          )}
+                          {user.role === "admin" ? "Admin" : "User"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2.5 w-2.5 rounded-full ${user.is_active ? "bg-emerald-500" : "bg-red-500"} shadow-sm transition-transform duration-300 group-hover/row:scale-125`} />
+                          <span className={`text-sm font-bold tracking-tight ${user.is_active ? "text-emerald-600" : "text-red-500"}`}>
+                            {user.is_active ? "Active" : "Suspended"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`rounded-full px-4 py-1 border font-bold text-[10px] uppercase tracking-widest transition-all ${user.wireguard_enabled
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 group-hover/row:bg-emerald-100"
+                            : "bg-slate-50 text-slate-700 border-slate-200 group-hover/row:bg-slate-100"
+                            }`}
+                        >
+                          {user.wireguard_enabled ? "Enabled" : "Disabled"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm text-foreground/80 font-medium">
+                          <div className="p-1.5 bg-muted/50 rounded-lg group-hover/row:bg-primary/10 transition-colors">
+                            <Smartphone className="h-3.5 w-3.5 text-muted-foreground group-hover/row:text-primary transition-colors" />
+                          </div>
+                          <span className="font-bold">{user.device_count || 0}</span>
+                          <span className="text-muted-foreground text-xs uppercase tracking-tighter">Devices</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right px-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110 hover:shadow-lg hover:shadow-primary/20 active:scale-95">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52 p-2 border-muted-foreground/10 shadow-2xl backdrop-blur-md">
+                            <DropdownMenuItem onClick={() => openEditDialog(user)} className="gap-2 cursor-pointer rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-colors py-2.5">
+                              <Edit3 className="h-4 w-4 text-blue-500" />
+                              <span className="font-bold text-sm">Edit Account</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user)
+                                setDeleteDialogOpen(true)
+                              }}
+                              className="gap-2 text-destructive cursor-pointer rounded-lg hover:bg-red-500/10 transition-colors py-2.5"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="font-bold text-sm">Delete User</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -343,69 +375,55 @@ export function UserManagement() {
       <Drawer open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle>Edit User: {selectedUser?.username}</DrawerTitle>
+            <DrawerTitle>Modify Account: {selectedUser?.username}</DrawerTitle>
             <DrawerDescription>
-              Update user details. Changing the username will update its linked VPN devices.
+              Update role, status, and profile details for this account.
             </DrawerDescription>
           </DrawerHeader>
-          <div className="space-y-4 p-4">
+          <div className="space-y-4 p-6">
             <div className="grid gap-2">
-              <Label htmlFor="edit-username">Username</Label>
+              <Label htmlFor="edit-username">Display Name</Label>
               <Input
                 id="edit-username"
                 value={editFormData.username}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, username: e.target.value.replace(/\s/g, "") })
-                }
-                placeholder="Enter new username (no spaces)"
+                onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-role">Role</Label>
+              <Label htmlFor="edit-role">Role Permissions</Label>
               <Select
                 value={editFormData.role}
-                onValueChange={(value: "admin" | "user") =>
-                  setEditFormData({ ...editFormData, role: value })
-                }
+                onValueChange={(value: "admin" | "user") => setEditFormData({ ...editFormData, role: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin">Administrator</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-status">Account Status</Label>
+              <Label htmlFor="edit-status">Account Access</Label>
               <Select
                 value={editFormData.is_active ? "true" : "false"}
-                onValueChange={(value) =>
-                  setEditFormData({ ...editFormData, is_active: value === "true" })
-                }
+                onValueChange={(value) => setEditFormData({ ...editFormData, is_active: value === "true" })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="true">Active (Can Login)</SelectItem>
-                  <SelectItem value="false">Inactive (Blocked)</SelectItem>
+                  <SelectItem value="true">Open Access (Active)</SelectItem>
+                  <SelectItem value="false">Restricted (Suspended)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-          <DrawerFooter>
-            <Button onClick={handleEdit}>Save Changes</Button>
+          <DrawerFooter className="px-6 pb-10">
+            <Button onClick={handleEdit} className="w-full">Update Details</Button>
             <DrawerClose asChild>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedUser(null)
-                }}
-              >
-                Cancel
-              </Button>
+              <Button variant="outline" className="w-full" onClick={() => setSelectedUser(null)}>Cancel</Button>
             </DrawerClose>
           </DrawerFooter>
         </DrawerContent>
@@ -415,25 +433,18 @@ export function UserManagement() {
       <Drawer open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle>Delete User</DrawerTitle>
+            <DrawerTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Confirm Deletion
+            </DrawerTitle>
             <DrawerDescription>
-              Are you sure you want to delete user <strong>{selectedUser?.username}</strong>?
-              This action cannot be undone.
+              Are you sure you want to permanently remove <strong>{selectedUser?.username}</strong>? This action cannot be undone.
             </DrawerDescription>
           </DrawerHeader>
-          <DrawerFooter>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete Permanently
-            </Button>
+          <DrawerFooter className="px-6 pb-10">
+            <Button variant="destructive" onClick={handleDelete} className="w-full">Permanently Delete</Button>
             <DrawerClose asChild>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedUser(null)
-                }}
-              >
-                Cancel
-              </Button>
+              <Button variant="outline" className="w-full" onClick={() => setSelectedUser(null)}>Keep User</Button>
             </DrawerClose>
           </DrawerFooter>
         </DrawerContent>
@@ -441,4 +452,3 @@ export function UserManagement() {
     </div>
   )
 }
-

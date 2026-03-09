@@ -12,6 +12,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function DashboardPage() {
   const { user, loading, isAdmin } = useAuth()
@@ -44,11 +45,11 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     try {
       setDataLoading(true)
-      
+
       // Load devices to get stats
       const devicesResponse = await api.getMyDevices() as any
       const devices = Array.isArray(devicesResponse) ? devicesResponse : (devicesResponse.devices || [])
-      
+
       const activeDevices = devices.filter((d: any) => d.status === 'active').length
       const totalTraffic = devices.reduce((sum: number, d: any) => {
         return sum + (d.transfer_total || 0)
@@ -57,7 +58,7 @@ export default function DashboardPage() {
       // Load traffic analytics
       const trafficResponse = await api.getTrafficAnalytics(undefined, 24) as any
       const analytics = Array.isArray(trafficResponse) ? trafficResponse : (trafficResponse.data || [])
-      
+
       setStats({
         totalDevices: devices.length,
         activeDevices,
@@ -85,13 +86,15 @@ export default function DashboardPage() {
       setDataLoading(false)
     }
   }
-
   if (loading || !user || isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+        <div className="text-center group">
+          <div className="relative h-12 w-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-zinc-800" />
+            <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <p className="mt-6 text-sm font-bold tracking-widest text-muted-foreground uppercase animate-pulse">Initializing Dashboard...</p>
         </div>
       </div>
     )
@@ -109,16 +112,39 @@ export default function DashboardPage() {
       <AppSidebar variant="inset" isAdmin={false} />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex flex-1 flex-col"
+        >
           <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            <div className="flex flex-col gap-4 py-8 md:gap-8 md:py-10">
+              <div className="px-4 lg:px-6 mb-2">
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-zinc-100 md:text-4xl">
+                  Overview
+                </h1>
+                <p className="text-muted-foreground mt-2 text-md">
+                  Welcome back, <span className="text-primary font-bold">{user.username}</span>. Here's your network activity.
+                </p>
+              </div>
+
               <SectionCards stats={stats} loading={dataLoading} isAdmin={false} />
+
               <div className="px-4 lg:px-6">
-                <ChartAreaInteractive data={trafficData} loading={dataLoading} />
+                <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm dark:border-zinc-800/60 dark:bg-zinc-950">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">Traffic Activity</h3>
+                      <p className="text-sm text-muted-foreground">Network usage over the last 24 hours</p>
+                    </div>
+                  </div>
+                  <ChartAreaInteractive data={trafficData} loading={dataLoading} />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </SidebarInset>
     </SidebarProvider>
   )

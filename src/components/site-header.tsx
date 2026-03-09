@@ -5,6 +5,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { ModeToggle } from "@/components/mode-toggle"
+import { CommandPalette } from "@/components/admin/command-palette"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +23,7 @@ function capitalizeFirst(str: string): string {
 function generateBreadcrumbs(pathname: string) {
   // Remove leading slash and split by '/'
   const segments = pathname.split("/").filter(Boolean)
-  
+
   if (segments.length === 0) {
     return []
   }
@@ -29,7 +31,7 @@ function generateBreadcrumbs(pathname: string) {
   const breadcrumbs = segments.map((segment, index) => {
     const href = "/" + segments.slice(0, index + 1).join("/")
     const isLast = index === segments.length - 1
-    
+
     return {
       label: capitalizeFirst(segment),
       href,
@@ -74,7 +76,9 @@ export function SiteHeader() {
         ) : (
           <h1 className="text-base font-medium">Dashboard</h1>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-4">
+          <CommandPalette />
+          <ModeToggle />
         </div>
       </div>
     </header>

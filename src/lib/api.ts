@@ -330,6 +330,10 @@ class ApiClient {
     return this.request('/peers/');
   }
 
+  async getAdminPeers() {
+    return this.getPeers();
+  }
+
   // User Monitoring endpoints (for regular users)
   async getUserAuditLogs(
     action?: string,
