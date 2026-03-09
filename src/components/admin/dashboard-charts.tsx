@@ -19,23 +19,15 @@ import {
     ChartTooltipContent,
 } from "@/components/ui/chart"
 
-const areaData = [
-    { month: "Jan", traffic: 450 },
-    { month: "Feb", traffic: 320 },
-    { month: "Mar", traffic: 800 },
-    { month: "Apr", traffic: 1200 },
-    { month: "May", traffic: 950 },
-    { month: "Jun", traffic: 1400 },
-]
-
 interface DashboardChartsProps {
     stats: {
         activePeers: number
         totalPeers: number
     }
+    trafficData: any[]
 }
 
-export function DashboardCharts({ stats }: DashboardChartsProps) {
+export function DashboardCharts({ stats, trafficData }: DashboardChartsProps) {
     const donutData = [
         { name: "Active", value: stats.activePeers, fill: "#10b981" }, // Emerald 500
         { name: "Inactive", value: stats.totalPeers - stats.activePeers, fill: "#64748b" }, // Slate 500
@@ -127,13 +119,13 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                 <CardHeader>
                     <CardTitle>Network Traffic</CardTitle>
                     <CardDescription>
-                        Showing data usage for the last 6 months
+                        Showing traffic activity for the last 24 hours (in MB)
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
                         <AreaChart
-                            data={areaData}
+                            data={trafficData}
                             margin={{
                                 left: 12,
                                 right: 12,
@@ -145,7 +137,6 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                                 tickLine={false}
                                 axisLine={false}
                                 tickMargin={8}
-                                tickFormatter={(value) => value.slice(0, 3)}
                             />
                             <ChartTooltip
                                 cursor={false}
@@ -164,7 +155,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                 </CardContent>
                 <CardFooter>
                     <div className="flex w-full items-start gap-2 text-sm text-muted-foreground">
-                        Peak traffic in April with 1.2 GB data
+                        Traffic usage across all devices
                     </div>
                 </CardFooter>
             </Card>
