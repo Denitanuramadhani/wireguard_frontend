@@ -14,74 +14,93 @@ import { Activity, Zap, Wifi, SignalHigh, Globe, ArrowUp, ArrowDown } from "luci
 export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
     const [download, setDownload] = useState(0)
     const [upload, setUpload] = useState(0)
-    const [phase, setPhase] = useState<'idle' | 'download' | 'upload' | 'complete'>('idle')
+    const [ping, setPing] = useState(0)
+    const [jitter, setJitter] = useState(0)
+    const [ip, setIp] = useState<string>("")
+    const [phase, setPhase] = useState<'idle' | 'ping' | 'download' | 'upload' | 'complete'>('idle')
     const [progress, setProgress] = useState(0)
 
-    const requestRef = useRef<number>()
-    const startTimeRef = useRef<number>()
+    const workerRef = useRef<Worker | null>(null)
+    const timerRef = useRef<NodeJS.Timeout | null>(null)
 
     const runTest = () => {
-        setPhase('download')
-        setDownload(0)
-        setUpload(0)
-        setProgress(0)
-
-        const targetDownload = Math.floor(Math.random() * 150) + 820 // 820-970 Mbps
-        const targetUpload = Math.floor(Math.random() * 100) + 450 // 450-550 Mbps
-
-        // Phase 1: Download
-        let start = Date.now()
-        const duration = 4000
-
-        const animate = () => {
-            const now = Date.now()
-            const elapsed = now - start
-            const p = Math.min(elapsed / duration, 1)
-
-            if (phase === 'download') {
-                const jitter = Math.sin(now * 0.01) * 5
-                setDownload(Math.floor(p * targetDownload + jitter))
-                setProgress(p * 50)
-
-                if (p < 1) {
-                    requestRef.current = requestAnimationFrame(animate)
-                } else {
-                    setPhase('upload')
-                    start = Date.now()
-                    requestRef.current = requestAnimationFrame(animate)
-                }
-            } else if (phase === 'upload') {
-                const clock = now - start
-                const upP = Math.min(clock / duration, 1)
-                const jitter = Math.sin(now * 0.01) * 3
-                setUpload(Math.floor(upP * targetUpload + jitter))
-                setProgress(50 + upP * 50)
-
-                if (upP < 1) {
-                    requestRef.current = requestAnimationFrame(animate)
-                } else {
-                    setPhase('complete')
-                    cancelAnimationFrame(requestRef.current!)
-                }
-            }
+        if (workerRef.current) {
+            workerRef.current.terminate()
         }
 
-        requestRef.current = requestAnimationFrame(animate)
+        setPhase('ping')
+        setDownload(0)
+        setUpload(0)
+        setPing(0)
+        setJitter(0)
+        setIp("")
+        setProgress(0)
+
+        const worker = new Worker('/speedtest_worker.js')
+        workerRef.current = worker
+
+        const serverUrl = "http://117.53.44.59:8090/"
+
+        worker.postMessage('start ' + JSON.stringify({
+            test_order: "P_D_U",
+            url_dl: serverUrl + "backend/garbage.php",
+            url_ul: serverUrl + "backend/empty.php",
+            url_ping: serverUrl + "backend/empty.php",
+            url_getIp: serverUrl + "backend/getIP.php",
+            telemetry_level: "disabled"
+        }))
+
+        timerRef.current = setInterval(() => {
+            worker.postMessage('status')
+        }, 100)
+
+        worker.onmessage = (e) => {
+            const data = JSON.parse(e.data)
+            const state = data.testState
+
+            if (state === 1) setPhase('download')
+            else if (state === 2) setPhase('ping')
+            else if (state === 3) setPhase('upload')
+            else if (state === 4) {
+                setPhase('complete')
+                if (timerRef.current) clearInterval(timerRef.current)
+                worker.terminate()
+            } else if (state === 5) {
+                setPhase('idle')
+                if (timerRef.current) clearInterval(timerRef.current)
+            }
+
+            setDownload(parseFloat(data.dlStatus) || 0)
+            setUpload(parseFloat(data.ulStatus) || 0)
+            setPing(parseFloat(data.pingStatus) || 0)
+            setJitter(parseFloat(data.jitterStatus) || 0)
+            if (data.clientIp) setIp(data.clientIp)
+
+            // Progress calculation
+            let p = 0
+            if (state === 2) p = data.pingProgress * 33
+            else if (state === 1) p = 33 + data.dlProgress * 33
+            else if (state === 3) p = 66 + data.ulProgress * 34
+            else if (state === 4) p = 100
+            setProgress(p)
+        }
     }
 
     useEffect(() => {
         if (open) {
             runTest()
         } else {
-            if (requestRef.current) cancelAnimationFrame(requestRef.current)
+            if (workerRef.current) workerRef.current.terminate()
+            if (timerRef.current) clearInterval(timerRef.current)
         }
         return () => {
-            if (requestRef.current) cancelAnimationFrame(requestRef.current)
+            if (workerRef.current) workerRef.current.terminate()
+            if (timerRef.current) clearInterval(timerRef.current)
         }
     }, [open])
 
     const currentSpeed = phase === 'upload' ? upload : download
-    const maxSpeed = phase === 'upload' ? 600 : 1000
+    const maxSpeed = phase === 'upload' ? 500 : 1000 // Adjust based on expected speeds
     const rotation = (currentSpeed / maxSpeed) * 180 - 90
 
     return (
@@ -102,8 +121,8 @@ export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenCh
                             </div>
                             Network Precision Scan
                         </DialogTitle>
-                        <DialogDescription className="text-base">
-                            Analyzing throughput from <span className="text-foreground font-semibold">Singapore SG-1</span> to your local endpoint.
+                        <DialogDescription className="text-base text-balance">
+                            Analyzing throughput from <span className="text-foreground font-semibold">Singapore SG-1</span> to {ip ? <span className="text-primary font-mono bg-primary/5 px-1.5 py-0.5 rounded border border-primary/20">{ip}</span> : "your local endpoint"}.
                         </DialogDescription>
                     </DialogHeader>
                 </div>
@@ -112,7 +131,7 @@ export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenCh
                     {/* Modern Gauge Container */}
                     <div className="relative h-64 w-80">
                         {/* Status Glow */}
-                        <div className={`absolute inset-0 transition-opacity duration-1000 blur-[80px] rounded-full opacity-20 ${phase === 'download' ? 'bg-emerald-500' : phase === 'upload' ? 'bg-blue-500' : 'bg-primary'
+                        <div className={`absolute inset-0 transition-opacity duration-1000 blur-[80px] rounded-full opacity-20 ${phase === 'download' ? 'bg-emerald-500' : phase === 'upload' ? 'bg-blue-500' : phase === 'ping' ? 'bg-amber-500' : 'bg-primary'
                             }`} />
 
                         {/* Gauge Arc Background */}
@@ -133,7 +152,7 @@ export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenCh
                                 strokeLinecap="round"
                                 strokeDasharray="125.6"
                                 strokeDashoffset={125.6 - (currentSpeed / maxSpeed) * 125.6}
-                                className={`transition-all duration-300 ease-out ${phase === 'download' ? 'text-emerald-500' : 'text-blue-500'
+                                className={`transition-all duration-300 ease-out ${phase === 'download' ? 'text-emerald-500' : phase === 'upload' ? 'text-blue-500' : 'text-amber-500'
                                     }`}
                             />
                         </svg>
@@ -142,14 +161,14 @@ export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenCh
                         <div className="absolute inset-0 flex flex-col items-center justify-center pt-10">
                             <div className="flex items-baseline gap-1">
                                 <span className="text-7xl font-black tracking-tighter tabular-nums drop-shadow-sm">
-                                    {currentSpeed}
+                                    {phase === 'ping' ? ping : currentSpeed}
                                 </span>
-                                <span className="text-xl font-bold text-muted-foreground">Mbps</span>
+                                <span className="text-xl font-bold text-muted-foreground">{phase === 'ping' ? 'ms' : 'Mbps'}</span>
                             </div>
                             <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-full border border-muted-foreground/10 mt-2">
-                                {phase === 'upload' ? <ArrowUp className="h-3.5 w-3.5 text-blue-500" /> : <ArrowDown className="h-3.5 w-3.5 text-emerald-500" />}
+                                {phase === 'upload' ? <ArrowUp className="h-3.5 w-3.5 text-blue-500" /> : phase === 'download' ? <ArrowDown className="h-3.5 w-3.5 text-emerald-500" /> : <Activity className="h-3.5 w-3.5 text-amber-500" />}
                                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    {phase === 'upload' ? 'Testing Upload' : phase === 'download' ? 'Testing Download' : 'Scan Complete'}
+                                    {phase === 'upload' ? 'Testing Upload' : phase === 'download' ? 'Testing Download' : phase === 'ping' ? 'Testing Latency' : 'Scan Complete'}
                                 </span>
                             </div>
                         </div>
@@ -181,8 +200,21 @@ export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenCh
                             color={phase === 'upload' ? 'text-blue-500' : 'text-muted-foreground'}
                             active={phase === 'upload'}
                         />
-                        <MetricCard icon={SignalHigh} label="Latency" value={11} unit="ms" />
-                        <MetricCard icon={Globe} label="Server" value="SGP" unit="" />
+                        <MetricCard
+                            icon={SignalHigh}
+                            label="Latency"
+                            value={ping}
+                            unit="ms"
+                            color={phase === 'ping' ? 'text-amber-500' : 'text-muted-foreground'}
+                            active={phase === 'ping'}
+                        />
+                        <MetricCard
+                            icon={Zap}
+                            label="Jitter"
+                            value={jitter}
+                            unit="ms"
+                            color="text-muted-foreground"
+                        />
                     </div>
                 </div>
 

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { IconAlertCircle, IconInfoCircle, IconAlertTriangle, IconX } from "@tabler/icons-react"
-import { Activity, Download, Check } from "lucide-react"
+import { Activity, Download, Check, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
@@ -30,8 +30,10 @@ export default function AdminMonitoringPage() {
   const { user, loading: authLoading, isAdmin } = useAuth()
   const router = useRouter()
   const [alerts, setAlerts] = useState<any[]>([])
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     if (!authLoading) {
@@ -57,9 +59,14 @@ export default function AdminMonitoringPage() {
       const statsResponse = await api.getSystemStats() as any
       setStats(statsResponse.statistics || {})
 
+
       // Load alerts
       const alertsResponse = await api.getAlerts(50) as any
       const alertsList = Array.isArray(alertsResponse) ? alertsResponse : (alertsResponse.alerts || [])
+
+      // Load audit logs for console
+      const logsResponse = await api.getAuditLogs("", "", "", 10, 0) as any
+      setAuditLogs(logsResponse.logs || [])
 
       // Filter top 3 priority alerts (critical > high > medium > info)
       const sortedAlerts = alertsList.sort((a: any, b: any) => {
@@ -86,6 +93,26 @@ export default function AdminMonitoringPage() {
       className: "border-emerald-500/50 bg-background shadow-lg shadow-emerald-500/10",
     })
     setAlerts(prev => prev.filter(alert => alert.id !== id))
+  }
+
+  const handleExportReport = async () => {
+    try {
+      setExporting(true)
+      const blob = await api.exportMonitoringReport()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `wireguard-monitoring-report-${new Date().toISOString().split('T')[0]}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success("Report exported successfully")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to export report")
+    } finally {
+      setExporting(false)
+    }
   }
 
   if (authLoading || !user || !isAdmin) {
@@ -129,8 +156,12 @@ export default function AdminMonitoringPage() {
                   Real-time diagnostics and infrastructure health overview.
                 </p>
               </div>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 gap-2 h-11 px-6 font-bold transition-all hover:scale-[1.02] active:scale-[0.98]">
-                <Download className="h-5 w-5" />
+              <Button
+                onClick={handleExportReport}
+                disabled={exporting}
+                className="bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 gap-2 h-11 px-6 font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {exporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
                 Export Monthly Report
               </Button>
               <div className="absolute -bottom-4 left-4 lg:left-6 w-32 h-1.5 bg-primary/20 rounded-full" />
@@ -138,7 +169,7 @@ export default function AdminMonitoringPage() {
 
             <div className="px-4 lg:px-6 space-y-8 mt-10">
               {/* Top Row: System Health & Uptime */}
-              <SystemMonitoring stats={stats} />
+              <SystemMonitoring stats={stats} auditLogs={auditLogs} />
 
               <div className="space-y-8">
                 {/* Metric Cards */}
@@ -260,6 +291,6 @@ export default function AdminMonitoringPage() {
           </div>
         </div>
       </SidebarInset>
-    </SidebarProvider>
+    </SidebarProvider >
   )
 }

@@ -11,16 +11,9 @@ interface SystemLog {
     message: string
 }
 
-export function SystemMonitoring({ stats }: { stats: any }) {
+export function SystemMonitoring({ stats, auditLogs }: { stats: any, auditLogs?: any[] }) {
     const [uptime, setUptime] = useState("0d 0h 0m 0s")
 
-    const mockLogs: SystemLog[] = [
-        { timestamp: new Date().toISOString(), level: 'info', message: 'WireGuard service started successfully.' },
-        { timestamp: new Date(Date.now() - 5000).toISOString(), level: 'info', message: 'New peer connection established from 192.168.1.5' },
-        { timestamp: new Date(Date.now() - 15000).toISOString(), level: 'warn', message: 'High CPU usage detected on core #2' },
-        { timestamp: new Date(Date.now() - 30000).toISOString(), level: 'error', message: 'Failed handshake from peer index 42' },
-        { timestamp: new Date(Date.now() - 45000).toISOString(), level: 'info', message: 'Configuration sync completed.' },
-    ]
 
     useEffect(() => {
         const start = Date.now() - (stats.uptime_seconds || 86450) * 1000
@@ -38,7 +31,7 @@ export function SystemMonitoring({ stats }: { stats: any }) {
     return (
         <div className="space-y-6 px-4 lg:px-6">
             {/* Top Section: Health Gauges & Uptime */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* CPU Usage */}
                 <Card className="bg-background/50 backdrop-blur-md border-muted-foreground/10 overflow-hidden group transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-[1.01] hover:shadow-xl hover:shadow-blue-500/5">
                     <CardHeader className="pb-2">
@@ -48,7 +41,7 @@ export function SystemMonitoring({ stats }: { stats: any }) {
                                 <span className="font-bold uppercase tracking-wider text-[10px]">CPU Usage</span>
                             </CardDescription>
                             <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 group-hover:bg-blue-500/20 transition-all font-bold">
-                                {stats.cpu_usage || '12%'}
+                                {stats.metrics?.cpu_usage || '0%'}
                             </Badge>
                         </div>
                     </CardHeader>
@@ -57,11 +50,11 @@ export function SystemMonitoring({ stats }: { stats: any }) {
                             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-blue-500 transition-all duration-1000 group-hover:brightness-125"
-                                    style={{ width: stats.cpu_usage || '12%' }}
+                                    style={{ width: stats.metrics?.cpu_usage || '0%' }}
                                 />
                             </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">Load Average: 0.45 0.32 0.12</p>
+                        <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-widest opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap overflow-hidden text-ellipsis">Load: {stats.metrics?.load_avg || '0.00'}</p>
                     </CardContent>
                 </Card>
 
@@ -71,10 +64,10 @@ export function SystemMonitoring({ stats }: { stats: any }) {
                         <div className="flex items-center justify-between">
                             <CardDescription className="flex items-center gap-2 group-hover:text-purple-500 transition-colors duration-300">
                                 <Memory className="h-4 w-4 text-purple-500 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-6" />
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Memory Usage</span>
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Memory</span>
                             </CardDescription>
                             <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20 group-hover:bg-purple-500/20 transition-all font-bold">
-                                {stats.memory_usage || '2.4 GB'}
+                                {stats.metrics?.memory_usage || '0.0 GB'}
                             </Badge>
                         </div>
                     </CardHeader>
@@ -87,7 +80,33 @@ export function SystemMonitoring({ stats }: { stats: any }) {
                                 />
                             </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">Total: 8GB | Free: 5.6GB</p>
+                        <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">System Resource Allocated</p>
+                    </CardContent>
+                </Card>
+
+                {/* Disk Storage */}
+                <Card className="bg-background/50 backdrop-blur-md border-muted-foreground/10 overflow-hidden group transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-[1.01] hover:shadow-xl hover:shadow-amber-500/5">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                            <CardDescription className="flex items-center gap-2 group-hover:text-amber-500 transition-colors duration-300">
+                                <ShieldCheck className="h-4 w-4 text-amber-500 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-6" />
+                                <span className="font-bold uppercase tracking-wider text-[10px]">Disk Usage</span>
+                            </CardDescription>
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 group-hover:bg-amber-500/20 transition-all font-bold">
+                                {stats.metrics?.disk_usage || '0%'}
+                            </Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-end justify-between mt-2">
+                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-amber-500 transition-all duration-1000 group-hover:brightness-125"
+                                    style={{ width: stats.metrics?.disk_usage || '0%' }}
+                                />
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-widest opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap overflow-hidden text-ellipsis">{stats.metrics?.platform || 'Linux OS'}</p>
                     </CardContent>
                 </Card>
 
@@ -101,10 +120,10 @@ export function SystemMonitoring({ stats }: { stats: any }) {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="text-3xl font-black tracking-tighter tabular-nums mt-1 uppercase group-hover:scale-105 transition-transform origin-left duration-300">
+                        <div className="text-xl font-black tracking-tighter tabular-nums mt-1 uppercase group-hover:scale-105 transition-transform origin-left duration-300">
                             {uptime}
                         </div>
-                        <p className="text-[10px] text-primary-foreground/60 mt-2 uppercase font-bold tracking-widest group-hover:text-primary-foreground/80 transition-colors">Since last reboot: 2024-03-01</p>
+                        <p className="text-[10px] text-primary-foreground/60 mt-2 uppercase font-bold tracking-widest group-hover:text-primary-foreground/80 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">{stats.metrics?.kernel || 'Kernel Sync active'}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -124,20 +143,33 @@ export function SystemMonitoring({ stats }: { stats: any }) {
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="h-[300px] overflow-y-auto p-4 font-mono text-xs space-y-2 custom-scrollbar">
-                        {mockLogs.map((log, i) => (
-                            <div key={i} className="flex gap-4 group/line py-0.5">
-                                <span className="text-slate-600 shrink-0 select-none">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                <span className={`font-bold shrink-0 text-[10px] ${log.level === 'error' ? 'text-red-400' :
-                                    log.level === 'warn' ? 'text-yellow-400' : 'text-emerald-400'
-                                    }`}>
-                                    [{log.level.toUpperCase()}]
-                                </span>
-                                <span className="text-slate-300 group-hover/line:text-white transition-colors duration-200">{log.message}</span>
+                        {auditLogs && auditLogs.length > 0 ? auditLogs.map((log, i) => (
+                            <div key={i} className="flex gap-4 group/line py-0.5 border-b border-white/[0.03] last:border-0 pb-2">
+                                <span className="text-slate-600 shrink-0 select-none whitespace-nowrap">{new Date(log.created_at || log.timestamp).toLocaleTimeString()}</span>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`font-black shrink-0 text-[10px] tracking-tighter uppercase px-1.5 py-0.5 rounded ${log.action?.includes('delete') || log.action?.includes('revoke') || log.action?.includes('disable') ? 'bg-red-500/10 text-red-400' :
+                                                log.action?.includes('add') || log.action?.includes('create') || log.action?.includes('enable') ? 'bg-emerald-500/10 text-emerald-400' :
+                                                    'bg-blue-500/10 text-blue-400'
+                                            }`}>
+                                            {log.action?.replace('_', ' ') || 'SYSTEM'}
+                                        </span>
+                                        <span className="text-slate-500 text-[10px] font-bold">via {log.performed_by || 'system'}</span>
+                                    </div>
+                                    <span className="text-slate-300 group-hover/line:text-white transition-colors duration-200">
+                                        {log.details ? (typeof log.details === 'string' ? log.details : JSON.stringify(log.details)) : log.message}
+                                    </span>
+                                </div>
                             </div>
-                        ))}
-                        <div className="flex gap-4 animate-pulse opacity-50">
+                        )) : (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-2">
+                                <Activity className="h-8 w-8 animate-pulse" />
+                                <p className="font-bold uppercase tracking-widest text-[10px]">Waiting for system events...</p>
+                            </div>
+                        )}
+                        <div className="flex gap-4 animate-pulse opacity-50 pt-2">
                             <span className="text-slate-600 shrink-0">{new Date().toLocaleTimeString()}</span>
-                            <span className="text-emerald-400 font-bold">_</span>
+                            <span className="text-emerald-400 font-bold">_ ready for command</span>
                         </div>
                     </div>
                 </CardContent>

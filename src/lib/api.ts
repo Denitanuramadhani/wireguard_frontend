@@ -308,6 +308,18 @@ class ApiClient {
     return this.request(`/admin/monitoring/audit-logs?${params.toString()}`);
   }
 
+  async exportMonitoringReport() {
+    const url = `${this.baseURL}/admin/monitoring/export`;
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(url, { headers });
+    if (!response.ok) throw new Error("Failed to generate report");
+    return response.blob();
+  }
+
   async getBandwidthLimits() {
     return this.request('/admin/bandwidth/limits');
   }

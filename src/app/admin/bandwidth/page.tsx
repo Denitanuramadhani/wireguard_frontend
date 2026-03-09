@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SimpleTable } from "@/components/simple-table"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
@@ -43,6 +42,10 @@ export default function AdminBandwidthPage() {
   const [limitMB, setLimitMB] = useState("")
   const [speedTestOpen, setSpeedTestOpen] = useState(false)
 
+  // Real-time Traffic Data
+  const [trafficStats, setTrafficStats] = useState<any>(null)
+  const [trafficHistory, setTrafficHistory] = useState<any[]>([])
+
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
@@ -57,8 +60,55 @@ export default function AdminBandwidthPage() {
     if (user && isAdmin) {
       loadBandwidthLimits()
       loadAllUsers()
+      loadTrafficData()
+
+      // Poll for traffic data every 10 seconds
+      const interval = setInterval(loadTrafficData, 10000)
+      return () => clearInterval(interval)
     }
   }, [user, isAdmin])
+
+  const loadTrafficData = async () => {
+    try {
+      // Use system stats which is known to work on this server
+      const [statsResponse, analyticsResponse] = await Promise.allSettled([
+        api.getSystemStats(),
+        api.getTrafficAnalytics(undefined, 24)
+      ])
+
+      let statsData: any = {}
+      if (statsResponse.status === 'fulfilled') {
+        statsData = (statsResponse.value as any).statistics || {}
+      }
+
+      let history: any[] = []
+      if (analyticsResponse.status === 'fulfilled') {
+        const data = analyticsResponse.value as any
+        const rawHistory = Array.isArray(data) ? data : (data.data || [])
+        history = rawHistory.map((item: any) => ({
+          time: new Date(item.timestamp || item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          upload: Math.floor((item.transfer_tx || item.tx_bytes || 0) / 1024), // to KB
+          download: Math.floor((item.transfer_rx || item.rx_bytes || 0) / 1024), // to KB
+        }))
+      }
+
+      // Map statistics from actual server response
+      // Dashboard uses statsData for real values
+      const totalTraffic = statsData.bandwidth?.total || statsData.traffic_total || 0
+      const currentTx = statsData.bandwidth?.current_tx || 0
+      const currentRx = statsData.bandwidth?.current_rx || 0
+
+      setTrafficStats({
+        peak_speed: statsData.bandwidth?.peak || "N/A",
+        total_usage: totalTraffic ? `${(totalTraffic / (1024 ** 3)).toFixed(2)} GB` : "0.00 GB",
+        current_load: totalTraffic ? `${((currentTx + currentRx) / (1024 * 1024)).toFixed(1)} Mbps` : "0.0 Mbps",
+        recorded_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })
+      setTrafficHistory(history)
+    } catch (error) {
+      console.error("Failed to load traffic data:", error)
+    }
+  }
 
   const loadAllUsers = async () => {
     try {
@@ -157,11 +207,6 @@ export default function AdminBandwidthPage() {
     }
   ]
 
-  // Mock chart data for bandwidth usage
-  const chartData = Array.from({ length: 24 }, (_, i) => ({
-    date: new Date(Date.now() - (23 - i) * 60 * 60 * 1000).toISOString(),
-    traffic: Math.random() * 5000000000,
-  }))
 
   if (authLoading || !user || !isAdmin) {
     return (
@@ -216,7 +261,7 @@ export default function AdminBandwidthPage() {
 
             <div className="px-4 lg:px-6 space-y-8 mt-10">
               {/* Hero Dashboard */}
-              <BandwidthDashboard />
+              <BandwidthDashboard stats={trafficStats} history={trafficHistory} />
 
               {/* Management Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

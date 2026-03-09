@@ -32,7 +32,28 @@ const chartConfig = {
     },
 } satisfies ChartConfig
 
-export function BandwidthDashboard() {
+interface BandwidthDashboardProps {
+    stats?: {
+        peak_speed?: string
+        total_usage?: string
+        current_load?: string
+        quota_percent?: number
+        recorded_at?: string
+    }
+    history?: Array<{
+        time: string
+        upload: number
+        download: number
+    }>
+}
+
+export function BandwidthDashboard({ stats, history }: BandwidthDashboardProps) {
+    // Default fallback data if none provided
+    const chartData = history && history.length > 0 ? history : [
+        { time: "00:00", upload: 0, download: 0 },
+        { time: "23:59", upload: 0, download: 0 },
+    ]
+
     return (
         <div className="space-y-6">
             {/* Quick Stats Header */}
@@ -45,8 +66,10 @@ export function BandwidthDashboard() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black">124.5 Mbps</div>
-                        <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-wider">Recorded at 14:30 today</p>
+                        <div className="text-2xl font-black">{stats?.peak_speed || "0.0 Mbps"}</div>
+                        <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-wider">
+                            {stats?.recorded_at ? `Recorded at ${stats.recorded_at}` : "No peak recorded today"}
+                        </p>
                     </CardContent>
                 </Card>
 
@@ -58,8 +81,10 @@ export function BandwidthDashboard() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black text-blue-500">1.42 TB</div>
-                        <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-wider">82% of quota consumed</p>
+                        <div className="text-2xl font-black text-blue-500">{stats?.total_usage || "0 GB"}</div>
+                        <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-wider">
+                            {stats?.quota_percent !== undefined ? `${stats.quota_percent}% of quota consumed` : "Dynamic quota allocation"}
+                        </p>
                     </CardContent>
                 </Card>
 
@@ -71,7 +96,7 @@ export function BandwidthDashboard() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black text-emerald-500">12.8 Mbps</div>
+                        <div className="text-2xl font-black text-emerald-500">{stats?.current_load || "0.0 Mbps"}</div>
                         <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-wider">Stable connection status</p>
                     </CardContent>
                 </Card>
@@ -97,7 +122,7 @@ export function BandwidthDashboard() {
                 </CardHeader>
                 <CardContent className="px-2 pt-4">
                     <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                        <AreaChart data={data} margin={{ left: -20, right: 10 }}>
+                        <AreaChart data={chartData} margin={{ left: -20, right: 10 }}>
                             <defs>
                                 <linearGradient id="fillUpload" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="var(--color-upload)" stopOpacity={0.3} />
@@ -120,6 +145,7 @@ export function BandwidthDashboard() {
                                 tickLine={false}
                                 axisLine={false}
                                 tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.5 }}
+                                tickFormatter={(val) => `${(val / 1024).toFixed(1)}K`}
                             />
                             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                             <Area
@@ -145,3 +171,4 @@ export function BandwidthDashboard() {
         </div>
     )
 }
+
