@@ -39,7 +39,7 @@ jobs:
         with:
           host: 43.134.117.194
           username: ubuntu
-          password: "lh9bUpll(tr^-+X&"
+          password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd ~/app/wireguard
             bash deploy-frontend.sh
