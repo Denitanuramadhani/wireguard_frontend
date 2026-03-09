@@ -189,7 +189,7 @@ const Shield3D = () => (
   </div>
 )
 
-const DiamondFeature = ({ icon: Icon, title, desc }) => (
+const DiamondFeature = ({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.8 }}
     whileInView={{ opacity: 1, scale: 1 }}
@@ -210,7 +210,7 @@ const DiamondFeature = ({ icon: Icon, title, desc }) => (
   </motion.div>
 )
 
-const DeploymentCard = ({ number, title, desc }) => (
+const DeploymentCard = ({ number, title, desc }: { number: string, title: string, desc: string }) => (
   <motion.div
     initial={{ opacity: 0, y: 50 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -231,7 +231,7 @@ const DeploymentCard = ({ number, title, desc }) => (
   </motion.div>
 )
 
-const FAQItem = ({ question, answer }) => {
+const FAQItem = ({ question, answer }: { question: string, answer: string }) => {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
