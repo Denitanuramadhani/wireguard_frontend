@@ -16,7 +16,9 @@ export function SystemMonitoring({ stats, auditLogs }: { stats: any, auditLogs?:
 
 
     useEffect(() => {
-        const start = Date.now() - (stats.uptime_seconds || 86450) * 1000
+        // Use stats.metrics.uptime_seconds provided by backend
+        const uptimeSecs = stats.metrics?.uptime_seconds || stats.uptime_seconds || 0
+        const start = Date.now() - (uptimeSecs) * 1000
         const interval = setInterval(() => {
             const diff = Date.now() - start
             const d = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -149,8 +151,8 @@ export function SystemMonitoring({ stats, auditLogs }: { stats: any, auditLogs?:
                                 <div className="flex flex-col gap-0.5">
                                     <div className="flex items-center gap-2">
                                         <span className={`font-black shrink-0 text-[10px] tracking-tighter uppercase px-1.5 py-0.5 rounded ${log.action?.includes('delete') || log.action?.includes('revoke') || log.action?.includes('disable') ? 'bg-red-500/10 text-red-400' :
-                                                log.action?.includes('add') || log.action?.includes('create') || log.action?.includes('enable') ? 'bg-emerald-500/10 text-emerald-400' :
-                                                    'bg-blue-500/10 text-blue-400'
+                                            log.action?.includes('add') || log.action?.includes('create') || log.action?.includes('enable') ? 'bg-emerald-500/10 text-emerald-400' :
+                                                'bg-blue-500/10 text-blue-400'
                                             }`}>
                                             {log.action?.replace('_', ' ') || 'SYSTEM'}
                                         </span>

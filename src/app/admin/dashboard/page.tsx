@@ -42,6 +42,10 @@ export default function AdminDashboardPage() {
         router.push('/dashboard')
       } else {
         fetchAllData()
+
+        // Polling every 60 seconds
+        const interval = setInterval(fetchAllData, 60000)
+        return () => clearInterval(interval)
       }
     }
   }, [user, loading, isAdmin, router])

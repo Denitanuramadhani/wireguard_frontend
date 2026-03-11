@@ -48,6 +48,10 @@ export default function AdminMonitoringPage() {
   useEffect(() => {
     if (user && isAdmin) {
       loadMonitoringData()
+
+      // Set up polling interval (60 seconds)
+      const interval = setInterval(loadMonitoringData, 60000)
+      return () => clearInterval(interval)
     }
   }, [user, isAdmin])
 
@@ -86,13 +90,18 @@ export default function AdminMonitoringPage() {
     }
   }
 
-  const handleResolveAlert = (id: string) => {
-    toast.success("Security Event Resolved", {
-      description: "The incident has been logged and cleared from the active queue.",
-      icon: <div className="bg-emerald-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>,
-      className: "border-emerald-500/50 bg-background shadow-lg shadow-emerald-500/10",
-    })
-    setAlerts(prev => prev.filter(alert => alert.id !== id))
+  const handleResolveAlert = async (id: number) => {
+    try {
+      await api.resolveAlert(id)
+      toast.success("Security Event Resolved", {
+        description: "The incident has been logged and cleared from the active queue.",
+        icon: <div className="bg-emerald-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>,
+        className: "border-emerald-500/50 bg-background shadow-lg shadow-emerald-500/10",
+      })
+      setAlerts(prev => prev.filter(alert => alert.id !== id))
+    } catch (error: any) {
+      toast.error(error.message || "Failed to resolve alert")
+    }
   }
 
   const handleExportReport = async () => {

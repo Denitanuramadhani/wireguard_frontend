@@ -313,11 +313,18 @@ class ApiClient {
     }>('/admin/monitoring/stats');
   }
 
-  async getAlerts(limit: number = 50, severity?: string) {
+  async getAlerts(limit: number = 50, severity?: string, only_unresolved: boolean = true) {
     const params = new URLSearchParams();
     params.append('limit', limit.toString());
+    params.append('only_unresolved', only_unresolved.toString());
     if (severity) params.append('severity', severity);
     return this.request(`/admin/monitoring/alerts?${params.toString()}`);
+  }
+
+  async resolveAlert(id: number) {
+    return this.request(`/admin/monitoring/alerts/${id}/resolve`, {
+      method: "POST",
+    });
   }
 
   async getAuditLogs(
