@@ -45,10 +45,10 @@ var settings = {
 	time_ulGraceTime: 3, //time to wait in seconds before actually measuring ul speed (wait for buffers to fill)
 	time_dlGraceTime: 1.5, //time to wait in seconds before actually measuring dl speed (wait for TCP window to increase)
 	count_ping: 10, // number of pings to perform in ping test
-	url_dl: "http://librespeed.denita-nur.my.id/backend/garbage.php",
-	url_ul: "http://librespeed.denita-nur.my.id/backend/empty.php",
-	url_ping: "http://librespeed.denita-nur.my.id/backend/empty.php",
-	url_getIp: "http://librespeed.denita-nur.my.id/backend/getIP.php",
+	url_dl: "https://librespeed.denita-nur.my.id/backend/garbage.php",
+	url_ul: "https://librespeed.denita-nur.my.id/backend/empty.php",
+	url_ping: "https://librespeed.denita-nur.my.id/backend/empty.php",
+	url_getIp: "https://librespeed.denita-nur.my.id/backend/getIP.php",
 	getIp_ispInfo: true, //if set to true, the server will include ISP info with the IP address
 	getIp_ispInfo_distance: "km", //km or mi=estimate distance from server in km/mi; set to false to disable distance estimation. getIp_ispInfo must be enabled in order for this to work
 	xhr_dlMultistream: 6, // number of download streams to use (can be different if enable_quirks is active)
