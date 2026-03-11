@@ -39,7 +39,7 @@ export function SpeedTestModal({ open, onOpenChange }: { open: boolean, onOpenCh
         const worker = new Worker('/speedtest_worker.js')
         workerRef.current = worker
 
-        const serverUrl = "http://117.53.44.59:8090/"
+        const serverUrl = "http://librespeed.denita-nur.my.id/"
 
         worker.postMessage('start ' + JSON.stringify({
             test_order: "P_D_U",
