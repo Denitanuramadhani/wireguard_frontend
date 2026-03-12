@@ -19,9 +19,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { IconPlus, IconQrcode, IconTrash } from "@tabler/icons-react"
+import { FileText } from "lucide-react"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
+
+import { DeviceConfigModal } from "@/components/device-config-modal"
 
 interface Device {
   id?: number
@@ -34,6 +37,8 @@ interface Device {
   transfer_rx?: number
   transfer_tx?: number
   transfer_total?: number
+  config?: string
+  qr_code?: string
 }
 
 export default function DevicesPage() {
@@ -41,6 +46,9 @@ export default function DevicesPage() {
   const [deviceName, setDeviceName] = useState("")
   const [adding, setAdding] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
+  const [fetchingConfig, setFetchingConfig] = useState(false)
 
   useEffect(() => {
     loadDevices()
@@ -93,26 +101,20 @@ export default function DevicesPage() {
     }
   }
 
-  const downloadQR = (base64: string, deviceName: string) => {
-    const link = document.createElement("a")
-    link.href = `data:image/png;base64,${base64}`
-    link.download = `wireguard-${deviceName.replace(/\s+/g, '-').toLowerCase()}-qr.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   async function handleRegenerateQR(deviceId: number) {
-    const device = devices.find(d => (d.device_id || d.id) === deviceId)
-    const name = device?.device_name || "device"
+    if (!confirm("Regenerate WireGuard keys? Old keys will be invalid.")) {
+      return
+    }
 
     try {
       const response = await api.regenerateQR(deviceId) as any
       if (response.qr_code) {
-        downloadQR(response.qr_code, name)
-        toast.success("QR code regenerated and downloaded")
+        toast.success("QR code regenerated")
+        if (selectedDevice && (selectedDevice.device_id || selectedDevice.id) === deviceId) {
+          setSelectedDevice(prev => prev ? { ...prev, qr_code: response.qr_code, config: response.config } : null)
+        }
       } else {
-        toast.error("Failed to regenerate QR code: No data received")
+        toast.error("Failed to regenerate QR code")
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to regenerate QR code")
@@ -120,31 +122,29 @@ export default function DevicesPage() {
   }
 
   async function handleViewQR(deviceId: number) {
-    const device = devices.find(d => (d.device_id || d.id) === deviceId)
-    const name = device?.device_name || "device"
+    const rawDevice = devices.find(d => (d.device_id || d.id) === deviceId)
+    if (!rawDevice) return
 
+    setSelectedDevice(rawDevice)
+    setConfigOpen(true)
+    
     try {
-      const response = await api.getDeviceQR(deviceId) as any
-      if (response.qr_code) {
-        downloadQR(response.qr_code, name)
-        toast.success("QR code downloaded")
-      } else if (response.qr_url) {
-        window.open(response.qr_url, '_blank')
-      } else if (response.expired) {
-        if (confirm("QR code has expired. Would you like to regenerate it?")) {
-          handleRegenerateQR(deviceId)
-        }
-      } else {
-        toast.info("QR code data not available. Try regenerating the QR code.")
-      }
+      setFetchingConfig(true)
+      // Fetch both config and QR (or use endpoints as needed)
+      const configResp = await api.getDeviceConfig(deviceId) as any
+      const qrResp = await api.getDeviceQR(deviceId) as any
+      
+      setSelectedDevice(prev => prev ? { 
+        ...prev, 
+        config: configResp.config, 
+        qr_code: qrResp.qr_code 
+      } : null)
+      
     } catch (error: any) {
-      if (error.message?.includes('expired') || error.message?.includes('regenerate')) {
-        if (confirm("QR code is not available or expired. Regenerate now?")) {
-          handleRegenerateQR(deviceId)
-        }
-      } else {
-        toast.error(error.message || "Failed to load QR code")
-      }
+      // If config fails, we still show the modal but with error
+      console.error(error)
+    } finally {
+      setFetchingConfig(false)
     }
   }
 
@@ -235,20 +235,11 @@ export default function DevicesPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  title="View QR Code"
+                  title="View Configuration"
                   onClick={() => handleViewQR(row.id)}
                   className="h-9 w-9 p-0 rounded-xl border-slate-200/60 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all active:scale-90"
                 >
-                  <IconQrcode className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  title="Regenerate Config"
-                  onClick={() => handleRegenerateQR(row.id)}
-                  className="h-9 w-9 p-0 rounded-xl border-slate-200/60 hover:bg-amber-500/5 hover:text-amber-600 hover:border-amber-500/30 transition-all active:scale-90"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>
+                  <FileText className="h-4 w-4" />
                 </Button>
                 <Button
                   size="sm"
@@ -354,6 +345,20 @@ export default function DevicesPage() {
             </div>
           </div>
         </motion.div>
+        
+        <DeviceConfigModal
+            device={selectedDevice ? {
+                device_id: selectedDevice.id || selectedDevice.device_id || 0,
+                device_name: selectedDevice.device_name,
+                vpn_ip: selectedDevice.vpn_ip,
+                config: selectedDevice.config,
+                qr_code: selectedDevice.qr_code
+            } : null}
+            isOpen={configOpen}
+            onClose={setConfigOpen}
+            fetching={fetchingConfig}
+            onRegenerate={handleRegenerateQR}
+        />
       </SidebarInset>
     </SidebarProvider>
   )
