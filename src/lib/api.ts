@@ -269,6 +269,16 @@ class ApiClient {
     });
   }
 
+  async adminRegenerateQR(deviceId: number) {
+    return this.request(`/admin/devices/${deviceId}/qr/regenerate`, {
+      method: 'POST',
+    });
+  }
+
+  async getAdminDeviceConfig(deviceId: number) {
+    return this.request(`/admin/devices/${deviceId}/config`);
+  }
+
   async enableUserVPN(username: string) {
     return this.request(`/admin/users/${username}/enable`, {
       method: 'POST',

@@ -50,13 +50,27 @@ interface Device {
     status: string
     created_at: string
     config?: string
+    qr_code?: string
 }
 
-export function DeviceTable({ devices, loading, onRevoke }: { devices: Device[], loading: boolean, onRevoke: (id: number) => void }) {
+export function DeviceTable({ 
+    devices, 
+    loading, 
+    onRevoke, 
+    onRegenerate,
+    onViewConfig 
+}: { 
+    devices: Device[], 
+    loading: boolean, 
+    onRevoke: (id: number) => void,
+    onRegenerate?: (id: number) => Promise<{ qr_code: string, config?: string } | undefined>,
+    onViewConfig?: (id: number) => Promise<{ config: string, qr_code?: string }>
+}) {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
     const [configOpen, setConfigOpen] = useState(false)
     const [copied, setCopied] = useState(false)
+    const [fetchingConfig, setFetchingConfig] = useState(false)
 
     const filteredDevices = devices.filter(d =>
         d.device_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -84,6 +98,23 @@ export function DeviceTable({ devices, loading, onRevoke }: { devices: Device[],
             a.click()
             document.body.removeChild(a)
             URL.revokeObjectURL(url)
+        }
+    }
+
+    const handleOpenConfig = async (device: Device) => {
+        setSelectedDevice(device)
+        setConfigOpen(true)
+        
+        if (onViewConfig) {
+            try {
+                setFetchingConfig(true)
+                const data = await onViewConfig(device.device_id)
+                setSelectedDevice(prev => prev ? { ...prev, config: data.config, qr_code: data.qr_code } : null)
+            } catch (error: any) {
+                toast.error("Failed to fetch device configuration")
+            } finally {
+                setFetchingConfig(false)
+            }
         }
     }
 
@@ -172,13 +203,18 @@ export function DeviceTable({ devices, loading, onRevoke }: { devices: Device[],
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-52 p-2 border-muted-foreground/10 shadow-2xl backdrop-blur-md">
-                                                        <DropdownMenuItem onClick={() => {
-                                                            setSelectedDevice(device)
-                                                            setConfigOpen(true)
-                                                        }} className="gap-2 cursor-pointer rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-colors">
+                                                        <DropdownMenuItem onClick={() => handleOpenConfig(device)} className="gap-2 cursor-pointer rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-colors">
                                                             <FileText className="h-4 w-4 text-blue-500" />
                                                             <span className="font-medium">View Config</span>
                                                         </DropdownMenuItem>
+                                                        
+                                                        {onRegenerate && (
+                                                            <DropdownMenuItem onClick={() => onRegenerate(device.device_id)} className="gap-2 cursor-pointer rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-colors">
+                                                                <QrCode className="h-4 w-4 text-amber-500" />
+                                                                <span className="font-medium">Regenerate QR</span>
+                                                            </DropdownMenuItem>
+                                                        )}
+
                                                         <DropdownMenuItem onClick={() => onRevoke(device.device_id)} className="gap-2 text-destructive cursor-pointer rounded-lg hover:bg-red-500/10 transition-colors">
                                                             <Trash2 className="h-4 w-4" />
                                                             <span className="font-medium">Delete Device</span>
@@ -205,34 +241,74 @@ export function DeviceTable({ devices, loading, onRevoke }: { devices: Device[],
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                        <div className="space-y-4">
-                            <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Configuration File</label>
-                            <div className="relative group">
-                                <pre className="p-4 rounded-xl bg-slate-950 text-slate-300 text-[10px] overflow-x-auto h-[300px] border border-slate-800">
-                                    {selectedDevice?.config || `[Interface]\nPrivateKey = <hidden>\nAddress = ${selectedDevice?.vpn_ip}/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = <server-key>\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0`}
-                                </pre>
-                                <div className="absolute top-2 right-2 flex gap-2">
-                                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={handleCopyConfig}>
-                                        {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                                    </Button>
-                                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={handleDownloadConfig}>
-                                        <Download className="h-4 w-4" />
-                                    </Button>
+                    {fetchingConfig ? (
+                        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                            <div className="h-10 w-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <p className="text-sm text-muted-foreground font-medium">Fetching secure configuration...</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                            <div className="space-y-4">
+                                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Configuration File</label>
+                                <div className="relative group">
+                                    <pre className="p-4 rounded-xl bg-slate-950 text-slate-300 text-[10px] overflow-x-auto h-[300px] border border-slate-800">
+                                        {selectedDevice?.config || `[Interface]\nPrivateKey = <hidden>\nAddress = ${selectedDevice?.vpn_ip}/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = <server-key>\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0`}
+                                    </pre>
+                                    <div className="absolute top-2 right-2 flex gap-2">
+                                        <Button size="icon" variant="secondary" className="h-8 w-8" onClick={handleCopyConfig}>
+                                            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                                        </Button>
+                                        <Button size="icon" variant="secondary" className="h-8 w-8" onClick={handleDownloadConfig}>
+                                            <Download className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="flex flex-col items-center justify-center space-y-4 border-l pl-6 border-muted-foreground/10">
-                            <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest self-start">Mobile QR Code</label>
-                            <div className="p-4 bg-white rounded-2xl shadow-inner border border-muted-foreground/10">
-                                <QrCode className="h-52 w-52 text-slate-900" />
+                            <div className="flex flex-col items-center justify-center space-y-4 border-l pl-6 border-muted-foreground/10">
+                                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest self-start">Mobile QR Code</label>
+                                <div className="p-4 bg-white rounded-2xl shadow-inner border border-muted-foreground/10">
+                                    {selectedDevice?.qr_code ? (
+                                        <img 
+                                            src={`data:image/png;base64,${selectedDevice.qr_code}`} 
+                                            alt="QR Code" 
+                                            className="h-52 w-52"
+                                        />
+                                    ) : (
+                                        <div className="h-52 w-52 flex flex-col items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 text-slate-400">
+                                            <QrCode className="h-12 w-12 mb-2 opacity-20" />
+                                            <p className="text-[10px] text-center px-4">QR Code not available. Please regenerate.</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-center text-muted-foreground px-6">
+                                    Scan this code with the WireGuard mobile app to import configuration instantly.
+                                </p>
+                                {onRegenerate && (
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="w-full mt-2 gap-2"
+                                        onClick={async () => {
+                                            if (selectedDevice && onRegenerate) {
+                                                const data = await onRegenerate(selectedDevice.device_id);
+                                                if (data) {
+                                                    setSelectedDevice(prev => prev ? { 
+                                                        ...prev, 
+                                                        qr_code: data.qr_code,
+                                                        config: data.config || prev.config
+                                                    } : null);
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <QrCode className="h-4 w-4" />
+                                        Regenerate QR
+                                    </Button>
+                                )}
                             </div>
-                            <p className="text-xs text-center text-muted-foreground px-6">
-                                Scan this code with the WireGuard mobile app to import configuration instantly.
-                            </p>
                         </div>
-                    </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

@@ -101,6 +101,47 @@ function AdminDevicesContent() {
     }
   }
 
+  const handleRegenerateQR = async (deviceId: number) => {
+    if (!confirm("Are you sure you want to regenerate WireGuard keys for this device? This will invalidate the old configuration.")) {
+      return
+    }
+
+    try {
+      const response = await api.adminRegenerateQR(deviceId) as any
+      if (response.qr_code) {
+        toast.success("QR code regenerated successfully")
+        return { 
+          qr_code: response.qr_code,
+          config: response.config // Hopefully backend includes config here too
+        }
+      } else {
+        toast.error("Failed to regenerate QR code")
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to regenerate QR code")
+    }
+  }
+
+  const handleViewConfig = async (deviceId: number) => {
+    try {
+      // First get the config
+      const configResp = await api.getAdminDeviceConfig(deviceId) as any
+      
+      // Then try to get the QR as well (if backend supports it separately or if it's in configResp)
+      // Based on our API client, getAdminDeviceConfig returns { config: ... }
+      // The QR code regeneration usually returns the QR code.
+      // For viewing existing QR, we might need a GetDeviceQR equivalent for admin or it might be in config.
+      
+      // Let's assume the config call returns what's needed or we can fetch QR if needed.
+      return {
+        config: configResp.config || "",
+        qr_code: configResp.qr_code // In case it's included
+      }
+    } catch (error: any) {
+      throw error
+    }
+  }
+
   const columns = [
     {
       accessorKey: "device_id",
@@ -213,6 +254,8 @@ function AdminDevicesContent() {
               devices={devices}
               loading={loading}
               onRevoke={handleRevokeDevice}
+              onRegenerate={handleRegenerateQR}
+              onViewConfig={handleViewConfig}
             />
           </div>
         </div>
