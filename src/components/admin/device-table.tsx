@@ -36,7 +36,7 @@ interface Device {
     device_id: number
     device_name: string
     vpn_ip: string
-    ldap_uid: string
+    username: string
     status: string
     created_at: string
     config?: string
@@ -63,7 +63,7 @@ export function DeviceTable({
 
     const filteredDevices = devices.filter(d =>
         d.device_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.ldap_uid.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
         d.vpn_ip.includes(searchQuery)
     )
 
@@ -121,7 +121,7 @@ export function DeviceTable({
                         <Table>
                             <TableHeader className="bg-muted/30">
                                 <TableRow>
-                                    <TableHead className="px-6 py-4 font-semibold">ID User</TableHead>
+                                    <TableHead className="px-6 py-4 font-semibold">User Name</TableHead>
                                     <TableHead className="font-semibold">Device Name</TableHead>
                                     <TableHead className="font-semibold">VPN IP</TableHead>
                                     <TableHead className="font-semibold">Status</TableHead>
@@ -155,7 +155,7 @@ export function DeviceTable({
                                 ) : (
                                     filteredDevices.map((device) => (
                                         <TableRow key={device.device_id} className="hover:bg-muted/30 transition-all duration-300 ease-in-out group/row border-b border-muted-foreground/5 last:border-0 hover:shadow-2xl hover:shadow-primary/5">
-                                            <TableCell className="px-6 py-4 font-medium transition-colors group-hover/row:text-primary tracking-tight">@{device.ldap_uid}</TableCell>
+                                            <TableCell className="px-6 py-4 font-medium transition-colors group-hover/row:text-primary tracking-tight">@{device.username}</TableCell>
                                             <TableCell className="font-semibold text-foreground/80 group-hover/row:text-foreground transition-colors">{device.device_name}</TableCell>
                                             <TableCell className="font-mono text-xs opacity-70 group-hover/row:opacity-100 transition-opacity">{device.vpn_ip}</TableCell>
                                             <TableCell>
